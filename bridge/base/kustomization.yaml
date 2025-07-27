@@ -1,0 +1,10 @@
+#! kustomization.yaml
+# Generated code, do not edit
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+    - 0-MAUDEMetrics-namespace.yaml
+    - default-network-policy.yaml
+    - flask_app-deployment.yaml
+    - flask_app-expose.yaml
+    - flask_app-service.yaml

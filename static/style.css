@@ -1,0 +1,534 @@
+/*
+ * MAUDEMetrics - FDA Medical Device Adverse Event Explorer
+ * Copyright (c) 2025 Mohamed Marouf, MD
+ *
+ * This file is part of MAUDEMetrics, an open-source tool for exploring adverse event 
+ * reports submitted to the FDA's MAUDE database, enabling efficient safety signal 
+ * detection and reporting.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * For research and educational purposes only. Not for clinical decision-making.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&display=swap');
+
+/* Global Styles */
+body {
+  font-family: 'Inter', 'Roboto', 'Open Sans', Arial, sans-serif;
+  font-size: 1.07rem;
+  line-height: 1.6;
+  background: #f8fafc;
+}
+
+/* Container Styles */
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Highlighted Title Bar */
+.highlight-title {
+    display: inline-block;
+    background: linear-gradient(90deg, #1976d2 0%, #90caf9 100%);
+    color: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 18px rgba(25, 118, 210, 0.13);
+    padding: 18px 38px 18px 38px;
+    margin-bottom: 8px;
+    font-size: 2.2em;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    text-align: center;
+    transition: box-shadow 0.2s;
+}
+.logo-title {
+    color: #fff !important;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 1em;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+}
+.page-title-section {
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+/* Footer Contrast (now simple, no box) */
+.footer-contrast {
+    color: #374151;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-weight: 500;
+    font-size: 1em;
+    box-shadow: none;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+/* Card Styles (override any dark background) */
+.card {
+    background-color: #f8fafc !important;
+    color: #222831;
+    border: 1.5px solid #e3eaf3 !important;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(33, 37, 41, 0.06);
+}
+
+/* Ensure red card with white text for Total Reports (Query) */
+.card.bg-danger.text-white, .bg-danger.text-white.card, .card .bg-danger.text-white {
+    background-color: #d32f2f !important;
+    color: #fff !important;
+}
+
+/* Ensure blue card with white text for Total Reports (Analytics) */
+.card.bg-primary.text-white, .bg-primary.text-white.card, .card .bg-primary.text-white {
+    background-color: #1976d2 !important;
+    color: #fff !important;
+}
+
+/* Ensure white heading for Total Reports card on red background */
+.card.bg-danger.text-white h2,
+.bg-danger.text-white .h5,
+.bg-danger.text-white h2.h5.mb-2 {
+    color: #fff !important;
+}
+
+/* Heading Styles */
+h1, h2, h3, h4, h5, h6 {
+    color: #1976d2 !important;
+    font-weight: 700;
+}
+
+.lead {
+    color: #1565c0 !important;
+    font-weight: 400;
+}
+
+/* Form Styles */
+.form {
+    display: flex;
+    flex-direction: column;
+}
+
+label, .form-label {
+    margin: 10px 0 5px;
+    color: #1976d2;
+    font-weight: 500;
+}
+
+input[type="text"],
+input[type="date"],
+select,
+textarea {
+    padding: 10px;
+    border: 1px solid #90caf9;
+    border-radius: 6px;
+    background-color: #fff;
+    color: #222831;
+    font-size: 1em;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 5px rgba(25, 118, 210, 0.12);
+}
+
+.form-text {
+    color: #1565c0 !important;
+    font-size: 0.97em;
+}
+
+/* Button Styles */
+button, .btn {
+    margin-top: 15px;
+    cursor: pointer;
+    background-color: #1976d2;
+    border: none;
+    color: #fff !important;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 1.08em;
+    padding: 10px 22px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 6px rgba(25, 118, 210, 0.08);
+}
+
+button:hover, .btn:hover {
+    background-color: #1565c0 !important;
+    color: #fff !important;
+}
+
+.btn-secondary {
+    background-color: #b0bec5 !important;
+    color: #222831 !important;
+    font-weight: 500 !important;
+}
+.btn-secondary:hover, .btn-secondary:focus {
+    background-color: #90a4ae !important;
+    color: #222831 !important;
+    border-color: #90a4ae !important;
+    transform: scale(1.03);
+}
+.btn-primary {
+    background: #1976d2;
+    border-radius: 8px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+    border: none;
+}
+.btn-primary:hover, .btn-primary:focus {
+    background: #115293;
+    transform: scale(1.03);
+}
+.btn-success {
+    background-color: #388e3c !important;
+    color: #fff !important;
+}
+.btn-danger {
+    background-color: #d32f2f !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    border: 2px solid #b71c1c !important;
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.10);
+}
+.btn-warning {
+    background-color: #ffa000 !important;
+    color: #fff !important;
+    font-weight: 500 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(255, 160, 0, 0.10);
+}
+.btn-warning:hover, .btn-warning:focus {
+    background-color: #ff9800 !important;
+    color: #fff !important;
+    border-color: #ff9800 !important;
+    transform: scale(1.03);
+}
+.btn-outline-secondary, .btn-outline-info {
+    color: #1976d2 !important;
+    border-color: #b0bec5 !important;
+    background: #e3eaf3 !important;
+    padding: 3px 10px !important;
+    font-size: 0.91em !important;
+}
+.btn-outline-secondary:hover, .btn-outline-info:hover, .btn-outline-secondary:focus, .btn-outline-info:focus {
+    background: #b0bec5 !important;
+    color: #222831 !important;
+    border-color: #b0bec5 !important;
+    transform: scale(1.03);
+}
+.btn-success:hover, .btn-success:focus {
+    background-color: #2e7d32 !important;
+    color: #fff !important;
+    border-color: #2e7d32 !important;
+    transform: scale(1.03);
+}
+.btn-danger:hover, .btn-danger:focus {
+    background-color: #b71c1c !important;
+    color: #fff !important;
+    border-color: #b71c1c !important;
+    transform: scale(1.03);
+}
+.btn-extract {
+    background: #1976d2 !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(25, 118, 210, 0.10);
+    letter-spacing: 0.5px;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.btn-extract:hover, .btn-extract:focus {
+    background: #115293 !important;
+    color: #fff !important;
+    box-shadow: 0 8px 24px rgba(25, 118, 210, 0.13);
+    transform: scale(1.035);
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #fff;
+    color: #222831;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(33, 37, 41, 0.06);
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e3eaf3;
+}
+
+th {
+    background-color: #1976d2 !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+tr:hover {
+    background-color: #e3eaf3 !important;
+}
+
+/* Badge Styles */
+.badge.bg-info {
+    background-color: #1976d2 !important;
+    color: #fff !important;
+}
+
+/* Link Styles */
+a {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+a:hover {
+    color: #1565c0;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
+    }
+    input[type="text"],
+    input[type="date"],
+    button {
+        padding: 8px;
+    }
+    a {
+        margin: 10px 5px;
+    }
+}
+
+/* Loader Styles (optional) */
+.loader {
+    border: 8px solid rgba(25, 118, 210, 0.1);
+    border-radius: 50%;
+    border-top: 8px solid #1976d2;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.maude-title-section {
+    margin-bottom: 2.5rem;
+}
+.maude-title {
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    font-size: 2.3em;
+    font-weight: 700;
+    color: #1976d2;
+    letter-spacing: 0.5px;
+    display: block;
+}
+.maude-underline {
+    width: 60px;
+    height: 4px;
+    background: #1976d2;
+    border-radius: 2px;
+    margin: 0.5em auto 0.7em auto;
+}
+.maude-subtitle {
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    font-size: 1.1em;
+    color: #374151;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+}
+.maude-hero {
+    margin-bottom: 3rem;
+    padding: 2.5rem 1rem 2rem 1rem;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(25, 118, 210, 0.07);
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.maude-title {
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #1976d2;
+    letter-spacing: 0.5px;
+}
+.maude-subtitle {
+    font-size: 1.25em;
+    color: #374151;
+    font-weight: 500;
+    margin-top: 0.2em;
+}
+.maude-divider {
+    width: 70px;
+    height: 4px;
+    background: #1976d2;
+    border-radius: 2px;
+    margin: 1.1em auto 1.1em auto;
+}
+.maude-mission {
+    font-size: 1.08em;
+    color: #1565c0;
+    font-weight: 500;
+    margin-bottom: 0.7em;
+}
+.maude-description {
+    font-size: 1.05em;
+    color: #374151;
+    font-weight: 400;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+}
+@media (max-width: 600px) {
+    .maude-title { font-size: 1.3em; }
+    .maude-subtitle { font-size: 1em; }
+    .maude-divider { width: 40px; height: 3px; }
+    .maude-mission, .maude-description { font-size: 0.97em; }
+}
+
+.custom-footer {
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  padding-bottom: 2rem;
+}
+.footer-author {
+  font-size: 1.05rem;
+  color: #1976d2;
+  font-weight: 500;
+}
+.footer-disclaimer {
+  font-size: 0.95rem;
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+/* Make input placeholder text very light, but user text dark */
+.card input::placeholder, .card textarea::placeholder {
+  color: #bbb !important;
+  opacity: 1;
+}
+.card input, .card textarea {
+  color: #222 !important;
+}
+
+/* Make helper text (form-text) lighter, but not as faint as placeholder */
+.card .form-text {
+  color: #aaa !important;
+}
+
+.cumulative-note {
+  font-size: 0.93rem;
+  color: #999;
+  margin-bottom: 1rem;
+  margin-top: -0.5rem;
+}
+
+/* Microinteractions */
+.btn, .card {
+  transition: box-shadow 0.2s, background 0.2s, transform 0.1s;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Faint divider above footer */
+footer.custom-footer {
+  border-top: 1.5px solid #e0e0e0;
+  margin-top: 3rem;
+  padding-top: 2rem;
+}
+
+/* Hero illustration placeholder */
+.hero-illustration {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto 2rem auto;
+  display: block;
+}
+
+/* Accessibility: high contrast for important text */
+.text-primary, .btn-primary {
+  color: #fff !important;
+}
+
+/* Responsive: full-width buttons on mobile */
+@media (max-width: 600px) {
+  .btn, .btn-lg, .btn-primary {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  .container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+.maude-hero-section {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(33, 37, 41, 0.10);
+  border: 1.5px solid #e0e0e0;
+  margin-bottom: 2.5rem;
+  padding: 3rem 1rem 2.5rem 1rem;
+}
+
+.maude-title {
+  font-size: 2.7rem;
+  font-weight: 700;
+  color: #174ea6;
+  letter-spacing: -1px;
+  margin-bottom: 0.5rem;
+}
+
+.maude-subtitle {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 1.1rem;
+}
+
+.maude-mission {
+  font-size: 1.1rem;
+  color: #218838;
+  font-weight: 600;
+  margin-bottom: 0.7rem;
+}
+
+.maude-description {
+  font-size: 1.08rem;
+  color: #444;
+  margin-top: 1.2rem;
+}

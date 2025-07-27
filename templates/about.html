@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - MAUDEMetrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">
+          MAUDEMetrics
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="nav-item"><a class="nav-link" href="/results"><i class="bi bi-bar-chart"></i> Results</a></li>
+            <li class="nav-item"><a class="nav-link" href="/analytics"><i class="bi bi-graph-up"></i> Analytics</a></li>
+            <li class="nav-item"><a class="nav-link active" href="/about"><i class="bi bi-info-circle"></i> About</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Hero Section -->
+        <div class="maude-hero text-center my-5">
+            <div class="maude-title" style="color:#174ea6; font-size:2.7rem; font-weight:700;">About MAUDEMetrics</div>
+            <div class="maude-subtitle" style="color:#111; font-size:1.35rem; font-weight:600;">FDA Medical Device Adverse Event Explorer</div>
+            <div class="maude-divider mx-auto"></div>
+            <div class="maude-mission" style="color:#1976d2; font-weight:600;">Supporting Evidence-Based Medical Device Safety Research</div>
+            <div class="maude-description mx-auto mt-3" style="max-width: 600px; color:#444; font-size:0.98rem;">MAUDEMetrics is an <span class="fw-semibold">open-source</span> tool for exploring adverse event reports submitted to the FDA's MAUDE database, enabling efficient safety signal detection and reporting.</div>
+        </div>
+
+        <!-- Project Overview -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4"><i class="bi bi-lightbulb text-primary"></i> Project Overview</h3>
+                        <p class="lead mb-3">MAUDEMetrics provides researchers, healthcare professionals, and medical device safety analysts with powerful tools to efficiently search, filter, and export comprehensive adverse event data for evidence-based safety research and signal detection.</p>
+                        <p class="mb-3">The platform integrates directly with the FDA's MAUDE (Manufacturer and User Facility Device Experience) database through the openFDA API, ensuring access to the most current and comprehensive medical device safety data available.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div class="row mb-5">
+            <div class="col-lg-10 mx-auto">
+                <h3 class="text-center mb-4"><i class="bi bi-gear text-primary"></i> Key Features</h3>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="card-title"><i class="bi bi-search text-info"></i> Advanced Search</h5>
+                                <p class="card-text">Search by brand names, product codes, manufacturers, device types, and date ranges with flexible partial matching and case-insensitive search capabilities.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="card-title"><i class="bi bi-graph-up text-success"></i> Analytics Dashboard</h5>
+                                <p class="card-text">Comprehensive analytics with demographic summaries, event type distributions, manufacturer analysis, device type breakdowns, and product problem analysis. Includes an interactive chart of event types per brand name with modern multi-select filters (checkboxes and search) for Brand Name and Event Type.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="card-title"><i class="bi bi-file-earmark-excel text-warning"></i> Data Export</h5>
+                                <p class="card-text">Professional Excel exports with multiple sheets: Raw Events, MDR Texts, Custom Events, and Summary (demographics & analysis).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="card-title"><i class="bi bi-shield-check text-danger"></i> Safety Focus</h5>
+                                <p class="card-text">Designed specifically for medical device safety research and signal detection in healthcare settings with comprehensive data validation.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Capabilities -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4"><i class="bi bi-search-heart text-primary"></i> Search Capabilities</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Search Fields</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle text-success"></i> Brand Name(s) - Partial matching</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Product Code(s) - FDA codes</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Manufacturer - Company names</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Type of Device - Generic names</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Date Range - Start/End dates</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Search Features</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle text-success"></i> Case-insensitive search</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Partial word matching</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Multiple values per field</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Flexible date ranges</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Cumulative search results</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Details -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4"><i class="bi bi-code-slash text-primary"></i> Technical Details</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Backend Technology</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle text-success"></i> Python Flask Framework</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> FDA openFDA API Integration</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> SQLite Database</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Pandas Data Processing</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Excel Export (openpyxl)</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Frontend Technology</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle text-success"></i> Bootstrap 5 Framework</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Responsive Design</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Interactive Charts</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Modern multi-select filters (checkboxes & search, Choices.js)</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Modern UI/UX</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Micro-interactions</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Source -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4"><i class="bi bi-database text-primary"></i> Data Source</h3>
+                        <p class="mb-3">MAUDEMetrics utilizes the <strong>FDA's openFDA API</strong> to access the MAUDE (Manufacturer and User Facility Device Experience) database, which contains reports of adverse events involving medical devices.</p>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Powered by openFDA:</strong> This application uses the openFDA API but is not endorsed by or affiliated with the FDA.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Research Disclaimer -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card border-warning shadow-sm">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4"><i class="bi bi-exclamation-triangle text-warning"></i> Important Disclaimer</h3>
+                        <div class="alert alert-warning mb-0">
+                            <strong>Research and Educational Purposes Only:</strong> MAUDEMetrics is designed for research and educational purposes. The data and analysis provided should not be used for clinical decision-making or patient care decisions. Always consult with qualified healthcare professionals for medical advice.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- License Information -->
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4"><i class="bi bi-file-earmark-text text-primary"></i> License & Attribution</h3>
+                        <p class="mb-3">MAUDEMetrics is released under the <strong>Apache License, Version 2.0</strong>, providing you with the freedom to use, modify, and distribute this software.</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Copyright</h6>
+                                <p class="mb-2">© 2025 Mohamed Marouf, MD</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">License</h6>
+                                <p class="mb-2">Apache License 2.0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="custom-footer bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-12">
+                    <div class="footer-author mb-2">
+                        <strong>Developed by Mohamed Marouf, MD</strong>
+                    </div>
+                    <div class="footer-disclaimer mb-2">
+                        For research and educational purposes only. Not for clinical decision-making.
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-muted">Powered by</span> 
+                        <a href="https://open.fda.gov/" target="_blank" class="text-decoration-none">openFDA</a>
+                        <span class="text-muted">•</span>
+                        <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" class="text-decoration-none">Apache 2.0 License</a>
+                    </div>
+                    <div>
+                        <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics" target="_blank" class="text-decoration-none">
+                            <i class="bi bi-github"></i> View on GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
