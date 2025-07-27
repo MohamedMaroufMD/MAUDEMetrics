@@ -1,0 +1,1432 @@
+"""
+MAUDEMetrics - FDA Medical Device Adverse Event Explorer
+Copyright (c) 2025 Mohamed Marouf, MD
+
+This file is part of MAUDEMetrics, an open-source tool for exploring adverse event 
+reports submitted to the FDA's MAUDE database, enabling efficient safety signal 
+detection and reporting.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+For research and educational purposes only. Not for clinical decision-making.
+"""
+
+from flask import Flask, request, render_template, redirect, url_for, send_file, session, send_from_directory
+import requests
+import pandas as pd
+import sqlite3
+from datetime import datetime
+import json
+import os
+import re
+import yaml
+import matplotlib.pyplot as plt
+import tempfile
+
+app = Flask(__name__)
+app.secret_key = 'replace_this_with_a_random_secret_key_12345'
+
+DATABASE = 'fda_data.db'
+
+# Function to get a database connection
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Create comprehensive database tables
+def init_db():
+    with get_db_connection() as conn:
+        # Main events table
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                report_number TEXT,
+                event_type TEXT,
+                event_location TEXT,
+                date_received TEXT,
+                date_of_event TEXT,
+                report_date TEXT,
+                date_facility_aware TEXT,
+                date_added TEXT,
+                date_changed TEXT,
+                report_to_fda TEXT,
+                adverse_event_flag TEXT,
+                product_problem_flag TEXT,
+                report_source_code TEXT,
+                health_professional TEXT,
+                number_devices_in_event TEXT,
+                number_patients_in_event TEXT,
+                noe_summarized TEXT,
+                manufacturer_name TEXT,
+                manufacturer_address_1 TEXT,
+                manufacturer_address_2 TEXT,
+                manufacturer_city TEXT,
+                manufacturer_state TEXT,
+                manufacturer_zip_code TEXT,
+                manufacturer_country TEXT,
+                manufacturer_postal_code TEXT,
+                type_of_report TEXT,
+                remedial_action TEXT,
+                raw_json TEXT
+            )
+        ''')
+        
+        # Device details table
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER,
+                device_sequence_number TEXT,
+                brand_name TEXT,
+                generic_name TEXT,
+                manufacturer_d_name TEXT,
+                model_number TEXT,
+                catalog_number TEXT,
+                lot_number TEXT,
+                device_operator TEXT,
+                device_availability TEXT,
+                device_report_product_code TEXT,
+                device_name TEXT,
+                medical_specialty_description TEXT,
+                regulation_number TEXT,
+                device_class TEXT,
+                implant_flag TEXT,
+                raw_device_json TEXT,
+                FOREIGN KEY (event_id) REFERENCES events (id)
+            )
+        ''')
+        
+        # Patient details table
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS patients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER,
+                patient_sequence_number TEXT,
+                patient_age TEXT,
+                patient_sex TEXT,
+                patient_weight TEXT,
+                patient_ethnicity TEXT,
+                patient_race TEXT,
+                sequence_number_outcome TEXT,
+                sequence_number_treatment TEXT,
+                raw_patient_json TEXT,
+                FOREIGN KEY (event_id) REFERENCES events (id)
+            )
+        ''')
+        
+        # MDR text table
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS mdr_texts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER,
+                text_type_code TEXT,
+                patient_sequence_number TEXT,
+                text TEXT,
+                FOREIGN KEY (event_id) REFERENCES events (id)
+            )
+        ''')
+        
+        conn.commit()
+
+# Enhanced fetch function with pagination
+def fetch_all_API_data(base_query, max_records=None):
+    all_data = []
+    skip = 0
+    limit = 1000  # Maximum allowed by FDA API
+    
+    while True:
+        query = f"{base_query}&limit={limit}&skip={skip}"
+        print(f"Fetching records {skip} to {skip + limit}...")
+        
+        response = requests.get(query)
+        if response.status_code != 200:
+            print(f"Error fetching data: {response.status_code}")
+            break
+            
+        data = response.json()
+        results = data.get('results', [])
+        
+        if not results:
+            break
+            
+        all_data.extend(results)
+        
+        # Check if we've reached the maximum or if there are no more results
+        total_results = data.get('meta', {}).get('results', {}).get('total', 0)
+        if skip + limit >= total_results or (max_records and len(all_data) >= max_records):
+            break
+            
+        skip += limit
+    
+    return all_data
+
+# Enhanced save function for comprehensive data
+def save_comprehensive_data(data):
+    with get_db_connection() as conn:
+        for record in data:
+            # Insert main event record
+            cursor = conn.execute('''
+                INSERT INTO events (
+                    report_number, event_type, event_location, date_received, 
+                    date_of_event, report_date, date_facility_aware, date_added,
+                    date_changed, report_to_fda, adverse_event_flag, product_problem_flag,
+                    report_source_code, health_professional, number_devices_in_event,
+                    number_patients_in_event, noe_summarized, manufacturer_name,
+                    manufacturer_address_1, manufacturer_address_2, manufacturer_city,
+                    manufacturer_state, manufacturer_zip_code, manufacturer_country,
+                    manufacturer_postal_code, type_of_report, remedial_action, raw_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                record.get('report_number'),
+                record.get('event_type'),
+                record.get('event_location'),
+                record.get('date_received'),
+                record.get('date_of_event'),
+                record.get('report_date'),
+                record.get('date_facility_aware'),
+                record.get('date_added'),
+                record.get('date_changed'),
+                record.get('report_to_fda'),
+                record.get('adverse_event_flag'),
+                record.get('product_problem_flag'),
+                record.get('report_source_code'),
+                record.get('health_professional'),
+                record.get('number_devices_in_event'),
+                record.get('number_patients_in_event'),
+                record.get('noe_summarized'),
+                record.get('manufacturer_name'),
+                record.get('manufacturer_address_1'),
+                record.get('manufacturer_address_2'),
+                record.get('manufacturer_city'),
+                record.get('manufacturer_state'),
+                record.get('manufacturer_zip_code'),
+                record.get('manufacturer_country'),
+                record.get('manufacturer_postal_code'),
+                json.dumps(record.get('type_of_report', [])),
+                json.dumps(record.get('remedial_action', [])),
+                json.dumps(record)
+            ))
+            
+            event_id = cursor.lastrowid
+            
+            # Insert device records
+            devices = record.get('device', [])
+            for device in devices:
+                openfda = device.get('openfda', {})
+                conn.execute('''
+                    INSERT INTO devices (
+                        event_id, device_sequence_number, brand_name, generic_name,
+                        manufacturer_d_name, model_number, catalog_number, lot_number,
+                        device_operator, device_availability, device_report_product_code,
+                        device_name, medical_specialty_description, regulation_number,
+                        device_class, implant_flag, raw_device_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    event_id,
+                    device.get('device_sequence_number'),
+                    device.get('brand_name'),
+                    device.get('generic_name'),
+                    device.get('manufacturer_d_name'),
+                    device.get('model_number'),
+                    device.get('catalog_number'),
+                    device.get('lot_number'),
+                    device.get('device_operator'),
+                    device.get('device_availability'),
+                    device.get('device_report_product_code'),
+                    openfda.get('device_name'),
+                    openfda.get('medical_specialty_description'),
+                    openfda.get('regulation_number'),
+                    openfda.get('device_class'),
+                    device.get('implant_flag'),
+                    json.dumps(device)
+                ))
+            
+            # Insert patient records
+            patients = record.get('patient', [])
+            for patient in patients:
+                conn.execute('''
+                    INSERT INTO patients (
+                        event_id, patient_sequence_number, patient_age, patient_sex,
+                        patient_weight, patient_ethnicity, patient_race,
+                        sequence_number_outcome, sequence_number_treatment, raw_patient_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    event_id,
+                    patient.get('patient_sequence_number'),
+                    patient.get('patient_age'),
+                    patient.get('patient_sex'),
+                    patient.get('patient_weight'),
+                    patient.get('patient_ethnicity'),
+                    patient.get('patient_race'),
+                    json.dumps(patient.get('sequence_number_outcome', [])),
+                    json.dumps(patient.get('sequence_number_treatment', [])),
+                    json.dumps(patient)
+                ))
+            
+            # Insert MDR text records
+            mdr_texts = record.get('mdr_text', [])
+            for mdr_text in mdr_texts:
+                conn.execute('''
+                    INSERT INTO mdr_texts (
+                        event_id, text_type_code, patient_sequence_number, text
+                    ) VALUES (?, ?, ?, ?)
+                ''', (
+                    event_id,
+                    mdr_text.get('text_type_code'),
+                    mdr_text.get('patient_sequence_number'),
+                    mdr_text.get('text')
+                ))
+        
+        conn.commit()
+
+def flatten_json(y, parent_key='', sep='.'): 
+    items = []
+    if isinstance(y, str):
+        try:
+            y = json.loads(y)
+        except Exception:
+            return {parent_key: y} if parent_key else {'value': y}
+    if isinstance(y, dict):
+        for k, v in y.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            items.extend(flatten_json(v, new_key, sep=sep).items())
+    elif isinstance(y, list):
+        for i, v in enumerate(y):
+            new_key = f"{parent_key}{sep}{i}" if parent_key else str(i)
+            items.extend(flatten_json(v, new_key, sep=sep).items())
+    else:
+        items.append((parent_key, y))
+    return dict(items)
+
+def sanitize_text(text):
+    if not isinstance(text, str):
+        return text
+    # Remove all ASCII control characters except tab, newline, carriage return
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+    # Remove invalid XML characters (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F, 0x7F-0x9F)
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    # Replace problematic Unicode quotes with standard quotes
+    text = text.replace('\u201c', '"').replace('\u201d', '"').replace('\u2018', "'").replace('\u2019', "'")
+    # Replace other problematic Unicode characters
+    text = text.replace('\u2013', '-').replace('\u2014', '-')  # en-dash, em-dash
+    text = text.replace('\u2022', '•')  # bullet point
+    text = text.replace('\u2026', '...')  # ellipsis
+    # Remove any remaining control characters
+    text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+    # Limit string length to prevent Excel issues (Excel has cell size limits)
+    if len(text) > 32000:  # Excel cell limit is 32,767 characters
+        text = text[:32000] + "..."
+    return text
+
+def sanitize_df(df):
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].apply(sanitize_text)
+    return df
+
+def pivot_event_record(flat_data, repeated_fields_map, max_counts):
+    """
+    Given a flat event dict, pivot repeated fields into separate columns.
+    repeated_fields_map: dict of {field_prefix: [json_path_prefixes]}
+    max_counts: dict of {field_prefix: max_count}
+    """
+    pivoted = {}
+    for k, v in flat_data.items():
+        matched = False
+        for prefix, paths in repeated_fields_map.items():
+            for path in paths:
+                if k.startswith(path):
+                    # e.g. device.0.model_number -> device_model_number_1
+                    idx = k[len(path):].split('.', 1)[0]
+                    try:
+                        idx_int = int(idx)
+                    except Exception:
+                        continue
+                    colname = f"{prefix}_{idx_int+1}"
+                    if colname in pivoted:
+                        # Concatenate extras
+                        pivoted[colname] = str(pivoted[colname]) + "; " + str(v)
+                    else:
+                        pivoted[colname] = v
+                    matched = True
+                    break
+            if matched:
+                break
+        if not matched:
+            pivoted[k] = v
+    # For each repeated field, if there are more values than max, concatenate extras
+    for prefix, max_count in max_counts.items():
+        for i in range(1, max_count+1):
+            colname = f"{prefix}_{i}"
+            if colname not in pivoted:
+                pivoted[colname] = ''
+    return pivoted
+
+def extract_event_fields(event, field_list, event_id=None):
+    """
+    Extracts the specified fields from the event JSON, handling arrays and nested fields.
+    For array fields, splits into _1, _2, ... columns, placed after the main field.
+    For nested fields (device.*, patient.*, mdr_text.*), pivots as needed.
+    """
+    result = {}
+    if event_id is not None:
+        result['event_id'] = event_id
+    # First, handle top-level fields and arrays
+    for field in field_list:
+        if '.' not in field and not field.startswith('device') and not field.startswith('patient') and not field.startswith('mdr_text'):
+            value = event.get(field, '')
+            if isinstance(value, list):
+                result[field] = ''
+                for i, v in enumerate(value):
+                    result[f'{field}_{i+1}'] = v
+            else:
+                result[field] = value
+    # Handle device fields
+    devices = event.get('device', [])
+    for i, device in enumerate(devices):
+        for field in field_list:
+            if field.startswith('device.'):
+                subfield = field.split('.', 1)[1]
+                value = device.get(subfield, '')
+                if isinstance(value, list):
+                    result[f'device_{subfield}_{i+1}'] = ''
+                    for j, v in enumerate(value):
+                        result[f'device_{subfield}_{i+1}_{j+1}'] = v
+                else:
+                    result[f'device_{subfield}_{i+1}'] = value
+    # Handle patient fields
+    patients = event.get('patient', [])
+    for i, patient in enumerate(patients):
+        for field in field_list:
+            if field.startswith('patient.'):
+                subfield = field.split('.', 1)[1]
+                value = patient.get(subfield, '')
+                if isinstance(value, list):
+                    result[f'patient_{subfield}_{i+1}'] = ''
+                    for j, v in enumerate(value):
+                        result[f'patient_{subfield}_{i+1}_{j+1}'] = v
+                else:
+                    result[f'patient_{subfield}_{i+1}'] = value
+    # Handle mdr_text fields (not in Events sheet, but for completeness)
+    # MAUDE report link
+    mdr_report_key = event.get('mdr_report_key', '')
+    maude_link = ''
+    if mdr_report_key:
+        # Try to get first device's product code and sequence number
+        pc = ''
+        seq = ''
+        if devices and isinstance(devices, list):
+            pc = devices[0].get('device_report_product_code', '')
+            seq = devices[0].get('device_sequence_number', '')
+        if pc and seq:
+            maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}&device_sequence_no={seq}"
+        else:
+            maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}"
+    result['maude_report_link'] = maude_link
+    return result
+
+def export_to_excel():
+    import pandas as pd
+    import json
+    import os
+    from datetime import datetime
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    fields_path = os.path.join(BASE_DIR, 'fields.xlsx')
+    # Main fields and array fields for the Main Fields sheet
+    main_fields = [
+        'event_id', 'report_number', 'mdr_report_key', 'maude_report_link',
+        'date_of_event', 'date_report', 'date_received', 'date_manufacturer_received',
+        'device_date_received', 'device_expiration_date_of_device', 'patient_date_received',
+        'device_generic_name', 'device_brand_name', 'device_manufacturer_d_name',
+        'device_device_report_product_code', 'device_model_number', 'device_lot_number',
+        'device_device_availability', 'device_device_evaluated_by_manufacturer', 'device_manufacturer_d_country',
+        'single_use_flag', 'reprocessed_and_reused_flag', 'device_device_operator', 'report_source_code',
+        'health_professional', 'reporter_occupation_code', 'source_type',
+        'patient_patient_age', 'patient_patient_sex', 'patient_patient_weight', 'patient_patient_ethnicity', 'patient_patient_race',
+        'event_type', 'adverse_event_flag', 'patient_patient_problems', 'patient_sequence_number_outcome', 'patient_sequence_number_treatment',
+        'product_problem_flag', 'product_problems'
+    ]
+    array_fields = [
+        'product_problems', 'patient_patient_problems', 'patient_sequence_number_outcome', 'patient_sequence_number_treatment'
+    ]
+    def extract_main_fields(event, event_id=None, main_fields=main_fields, array_fields=array_fields):
+        result = {}
+        if event_id is not None:
+            result['event_id'] = event_id
+        def add_array_field(base, values):
+            if isinstance(values, str) or not hasattr(values, '__iter__'):
+                values = [values] if values else []
+            for i, v in enumerate(values):
+                result[f'{base}_{i+1}'] = v
+        for field in main_fields:
+            if field == 'event_id':
+                continue
+            elif field == 'maude_report_link':
+                mdr_report_key = event.get('mdr_report_key', '')
+                maude_link = ''
+                devices = event.get('device', [])
+                if mdr_report_key:
+                    pc = ''
+                    seq = ''
+                    if devices and isinstance(devices, list) and devices:
+                        pc = devices[0].get('device_report_product_code', '')
+                        seq = devices[0].get('device_sequence_number', '')
+                    if pc and seq:
+                        maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}&device_sequence_no={seq}"
+                    else:
+                        maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}"
+                result['maude_report_link'] = maude_link
+            elif field.startswith('device_'):
+                devices = event.get('device', [])
+                subfield = field.replace('device_', '')
+                if devices and isinstance(devices, list) and devices:
+                    value = devices[0].get(subfield, '')
+                    # If value is array, add as multiple columns
+                    if isinstance(value, list):
+                        add_array_field(field, value)
+                    else:
+                        result[field] = value
+                else:
+                    result[field] = ''
+            elif field.startswith('patient_'):
+                patients = event.get('patient', [])
+                subfield = field.replace('patient_', '')
+                if patients and isinstance(patients, list) and patients:
+                    value = patients[0].get(subfield, '')
+                    # If value is array, add as multiple columns
+                    if isinstance(value, list):
+                        add_array_field(field, value)
+                    else:
+                        result[field] = value
+                else:
+                    result[field] = ''
+            elif field in array_fields:
+                add_array_field(field, event.get(field, []))
+            else:
+                value = event.get(field, '')
+                result[field] = value
+        return result
+    # Use the user-provided field list
+    field_list = [
+        'adverse_event_flag', 'product_problems', 'product_problem_flag', 'date_of_event', 'date_report', 'date_received',
+        'device_date_of_manufacturer', 'event_type', 'number_devices_in_event', 'number_patients_in_event', 'previous_use_code',
+        'remedial_action', 'removal_correction_number', 'report_number', 'single_use_flag', 'report_source_code',
+        'health_professional', 'reporter_occupation_code', 'initial_report_to_fda', 'reprocessed_and_reused_flag',
+        'device.device_sequence_number', 'device.device_event_key', 'device.date_received', 'device.brand_name',
+        'device.generic_name', 'device.udi_di', 'device.udi_public', 'device.device_report_product_code',
+        'device.model_number', 'device.catalog_number', 'device.lot_number', 'device.other_id_number',
+        'device.expiration_date_of_device', 'device.device_age_text', 'device.device_availability',
+        'device.date_returned_to_manufacturer', 'device.device_evaluated_by_manufacturer', 'device.device_operator',
+        'device.implant_flag', 'device.date_removed_flag', 'device.manufacturer_d_name', 'device.manufacturer_d_address_1',
+        'device.manufacturer_d_address_2', 'device.manufacturer_d_city', 'device.manufacturer_d_state',
+        'device.manufacturer_d_zip_code', 'device.manufacturer_d_zip_code_ext', 'device.manufacturer_d_postal_code',
+        'device.manufacturer_d_country', 'device.device_class', 'device.device_name', 'device.fei_number', 'device.medical_specialty_description', 'device.registration_number', 'patient.date_received', 'patient.patient_sequence_number', 'patient.patient_age',
+        'patient.patient_sex', 'patient.patient_weight', 'patient.patient_ethnicity', 'patient.patient_race',
+        'patient.patient_problems', 'patient.sequence_number_outcome', 'patient.sequence_number_treatment',
+        'mdr_text.date_report', 'mdr_text.mdr_text_key', 'mdr_text.patient_sequence_number', 'mdr_text.text',
+        'mdr_text.text_type_code', 'type_of_report', 'date_facility_aware', 'report_date', 'report_to_fda',
+        'date_report_to_fda', 'report_to_manufacturer', 'date_report_to_manufacturer', 'event_location', 'distributor_name',
+        'distributor_address_1', 'distributor_address_2', 'distributor_city', 'distributor_state', 'distributor_zip_code',
+        'distributor_zip_code_ext', 'manufacturer_name', 'manufacturer_address_1', 'manufacturer_address_2',
+        'manufacturer_city', 'manufacturer_postal_code', 'manufacturer_state', 'manufacturer_zip_code',
+        'manufacturer_zip_code_ext', 'manufacturer_country', 'manufacturer_contact_address_1',
+        'manufacturer_contact_address_2', 'manufacturer_contact_area_code', 'manufacturer_contact_city',
+        'manufacturer_contact_country', 'manufacturer_contact_exchange', 'manufacturer_contact_extension',
+        'manufacturer_contact_t_name', 'manufacturer_contact_f_name', 'manufacturer_contact_l_name',
+        'manufacturer_contact_pcity', 'manufacturer_contact_pcountry', 'manufacturer_contact_phone_number',
+        'manufacturer_contact_plocal', 'manufacturer_contact_postal_code', 'manufacturer_contact_state',
+        'manufacturer_contact_zip_code', 'manufacturer_contact_zip_ext', 'manufacturer_gl_name', 'manufacturer_gl_city',
+        'manufacturer_gl_country', 'manufacturer_gl_postal_code', 'manufacturer_gl_state', 'manufacturer_gl_address_1',
+        'manufacturer_gl_address_2', 'manufacturer_gl_zip_code', 'manufacturer_gl_zip_code_ext', 'date_manufacturer_received',
+        'source_type', 'event_key', 'mdr_report_key', 'manufacturer_link_flag', 'device name', 'fei_number',
+        'medical_specialty_description', 'registration_number', 'regulation_number'
+    ]
+    # List of array fields to handle placement
+    array_fields = [
+        'product_problems', 'remedial_action', 'previous_use_code', 'removal_correction_number', 'single_use_flag',
+        'report_source_code', 'reporter_occupation_code', 'initial_report_to_fda', 'reprocessed_and_reused_flag',
+        'patient.patient_problems', 'patient.sequence_number_outcome', 'patient.sequence_number_treatment'
+    ]
+    def format_all_date_columns(df):
+        import re
+        from datetime import datetime
+        date_pattern = re.compile(r'^\d{8}$')
+        date_base_names = [
+            'date_of_event', 'date_report', 'date_received', 'date_manufacturer_received',
+            'device_date_received', 'device_expiration_date_of_device', 'patient_date_received',
+            'device_date_of_manufacturer', 'device.date_received', 'device.expiration_date_of_device',
+            'device.date_returned_to_manufacturer', 'device.date_removed_flag', 'mdr_text.date_report',
+            'date_facility_aware', 'report_date', 'date_report_to_fda', 'date_report_to_manufacturer'
+        ]
+        date_cols_to_format = [col for col in df.columns if any(col == base or col.startswith(base + '_') for base in date_base_names)]
+        for col in date_cols_to_format:
+            df[col] = df[col].apply(
+                lambda x: datetime.strptime(str(x), '%Y%m%d').strftime('%m/%d/%Y') if isinstance(x, str) and date_pattern.match(x) else x
+            )
+        return df
+
+    with get_db_connection() as conn:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+        filename = f'MAUDEMetrics_{timestamp}.xlsx'
+        mdr_texts_csv = f'fda_mdr_texts_full_{timestamp}.csv'
+        try:
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                import re
+                def extract_numeric(val):
+                    if pd.isnull(val):
+                        return None
+                    match = re.search(r'\d+(\.\d+)?', str(val))
+                    return float(match.group()) if match else None
+                
+                # Additional data validation function
+                def validate_cell_value(val):
+                    """Validate and clean cell values before writing to Excel"""
+                    if pd.isna(val) or val is None:
+                        return ""
+                    val_str = str(val)
+                    # Apply additional sanitization for Excel compatibility
+                    val_str = sanitize_text(val_str)
+                    # Ensure the string is not too long for Excel
+                    if len(val_str) > 32000:
+                        val_str = val_str[:32000] + "..."
+                    return val_str
+                
+                # 1. EVENTS - Extract only user-specified fields, event_id as first column (OPTIMIZED)
+                events_query = 'SELECT id, raw_json FROM events ORDER BY id'
+                events_df = pd.read_sql_query(events_query, conn)
+                print('Events DataFrame shape:', events_df.shape)
+                
+                # OPTIMIZATION 1: Pre-compile regex patterns for better performance
+                import re
+                date_pattern = re.compile(r'^\d{8}$')
+                age_pattern = re.compile(r'\s*(YR|YEARS|YEAR|YRS)\s*', re.IGNORECASE)
+                number_pattern = re.compile(r'\d+')
+                
+                # OPTIMIZATION 2: Use list comprehension instead of append for better performance
+                all_events_data = []
+                for _, row in events_df.iterrows():
+                    if row['raw_json']:
+                        try:
+                            event = json.loads(row['raw_json'])
+                            extracted = extract_event_fields(event, field_list, event_id=row['id'])
+                            all_events_data.append(extracted)
+                        except Exception as e:
+                            all_events_data.append({'event_id': row['id'], 'error': str(e)})
+                
+                if not all_events_data:
+                    raise Exception('No data to export. Please run a search and try again.')
+                
+                if all_events_data:
+                    events_flat_df = pd.DataFrame(all_events_data)
+                    events_flat_df = sanitize_df(events_flat_df)
+                    events_flat_df = format_all_date_columns(events_flat_df)
+                    # Build ordered columns: event_id, then for each field, its array columns immediately after
+                    ordered_cols = ['event_id']
+                    for field in field_list:
+                        if field in events_flat_df.columns:
+                            ordered_cols.append(field)
+                        # Add array columns immediately after
+                        i = 1
+                        while f'{field}_{i}' in events_flat_df.columns:
+                            ordered_cols.append(f'{field}_{i}')
+                            i += 1
+                        # Insert maude_report_link after mdr_report_key
+                        if field == 'mdr_report_key' and 'maude_report_link' in events_flat_df.columns:
+                            ordered_cols.append('maude_report_link')
+                    # Add maude_report_link at the end if not already added
+                    if 'maude_report_link' in events_flat_df.columns and 'maude_report_link' not in ordered_cols:
+                        ordered_cols.append('maude_report_link')
+                    # Add any extra columns
+                    extra_cols = [col for col in events_flat_df.columns if col not in ordered_cols]
+                    events_flat_df = events_flat_df[ordered_cols + extra_cols]
+                    events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
+                    # --- Restore main_fields_df construction ---
+                    main_fields_cols = []
+                    for field in main_fields:
+                        # Find all columns in events_flat_df that start with this field name (robust: any suffix)
+                        matching_cols = [col for col in events_flat_df.columns if col == field or col.startswith(field + '_')]
+                        main_fields_cols.extend(matching_cols)
+                    # Add any extra columns not in main_fields_cols
+                    extra_cols = [col for col in events_flat_df.columns if col not in main_fields_cols]
+                    main_fields_df = events_flat_df[main_fields_cols + extra_cols]
+                    main_fields_df = format_all_date_columns(main_fields_df)
+                    
+                    # Remove completely blank columns (no entries at all)
+                    # Keep columns that have ANY entries, even if they're all NaN, None, null, etc.
+                    blank_cols = []
+                    for col in main_fields_df.columns:
+                        # Check if the column has any entries at all (even if they're NaN, None, null)
+                        has_any_entries = False
+                        for val in main_fields_df[col]:
+                            # If there's any value (even NaN, None, null), consider it an entry
+                            if pd.notna(val) or val is None:
+                                has_any_entries = True
+                                break
+                        if not has_any_entries:
+                            blank_cols.append(col)
+                    
+                    # Remove only the completely blank columns
+                    if blank_cols:
+                        main_fields_df = main_fields_df.drop(columns=blank_cols)
+                    
+                    # Define and apply humanize function to columns
+                    def humanize(col):
+                        if not isinstance(col, str):
+                            return col
+                        return col.replace('_', ' ').replace('.', ' ').title()
+                    main_fields_df.columns = [humanize(c) for c in main_fields_df.columns]
+                    main_fields_df.to_excel(writer, sheet_name='Custom_Events', index=False)
+                # 2. MDR TEXTS - Add event_id, mdr_report_key, and maude_report_link (link only for first row per event_id)
+                mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
+                mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
+                # OPTIMIZATION 5: Reuse already processed event data instead of re-parsing JSON
+                event_keys = {}
+                event_links = {}
+                for _, row in events_df.iterrows():
+                    try:
+                        event = json.loads(row['raw_json'])
+                        event_keys[row['id']] = event.get('mdr_report_key', '')
+                        mdr_report_key = event.get('mdr_report_key', '')
+                        devices = event.get('device', [])
+                        maude_link = ''
+                        if mdr_report_key:
+                            pc = ''
+                            seq = ''
+                            if devices and isinstance(devices, list) and devices:
+                                pc = devices[0].get('device_report_product_code', '')
+                                seq = devices[0].get('device_sequence_number', '')
+                            if pc and seq:
+                                maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}&device_sequence_no={seq}"
+                            else:
+                                maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}"
+                        event_links[row['id']] = maude_link
+                    except:
+                        event_keys[row['id']] = ''
+                        event_links[row['id']] = ''
+                
+                mdr_texts_df['mdr_report_key'] = mdr_texts_df['event_id'].map(event_keys)
+                
+                # OPTIMIZATION: Use vectorized operations for maude_report_link assignment
+                mdr_texts_df['maude_report_link'] = mdr_texts_df['event_id'].map(event_links)
+                mdr_texts_df = sanitize_df(mdr_texts_df)
+                mdr_texts_df = format_all_date_columns(mdr_texts_df)
+                # Reorder and filter columns for MDR_Texts sheet
+                mdr_cols = ['event_id', 'text_type_code', 'mdr_report_key', 'maude_report_link', 'text']
+                mdr_texts_df = mdr_texts_df[[col for col in mdr_cols if col in mdr_texts_df.columns]]
+                mdr_texts_df.to_excel(writer, sheet_name='MDR_Texts', index=False)
+                # --- Improved All-in-One Summary Sheet ---
+                summary_blocks = []
+                # 1. Total Reports
+                total_reports = len(events_flat_df)
+                summary_blocks.append(pd.DataFrame({
+                    'Summary': ['Total Reports'],
+                    'Value': [total_reports]
+                }))
+                summary_blocks.append(pd.DataFrame({'': ['']}))
+                
+                # 2. Patient Demographics Table (improved formatting)
+                demo_table = []
+                # OPTIMIZATION 6: Optimized demographic calculations
+                # Age
+                age_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_age')]
+                if age_cols:
+                    ages = pd.Series([extract_numeric(v) for v in events_flat_df[age_cols].values.flatten()]).dropna()
+                    age_val = f"{int(ages.median())} ({int(ages.min())}-{int(ages.max())})" if not ages.empty else "N/A"
+                    demo_table.append(["Age (years) median (range)", age_val, "", ""])
+                # Weight
+                weight_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_weight')]
+                if weight_cols:
+                    weights = pd.Series([extract_numeric(v) for v in events_flat_df[weight_cols].values.flatten()]).dropna()
+                    weight_val = f"{weights.median():.1f} ({weights.min():.1f}-{weights.max():.1f})" if not weights.empty else "N/A"
+                    demo_table.append(["Weight median (range)", weight_val, "", ""])
+                # Sex
+                sex_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_sex')]
+                sex_vals = pd.Series(events_flat_df[sex_cols].values.flatten()).dropna()
+                if not sex_vals.empty:
+                    first = True
+                    for k, v in sex_vals.value_counts().items():
+                        if first:
+                            demo_table.append(["Sex", k, v, f"{100*v/len(sex_vals):.1f}%"])
+                            first = False
+                        else:
+                            demo_table.append(["", k, v, f"{100*v/len(sex_vals):.1f}%"])
+                # Ethnicity
+                eth_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_ethnicity')]
+                eth_vals = pd.Series(events_flat_df[eth_cols].values.flatten()).dropna()
+                if not eth_vals.empty:
+                    first = True
+                    for k, v in eth_vals.value_counts().items():
+                        if first:
+                            demo_table.append(["Ethnicity", k, v, f"{100*v/len(eth_vals):.1f}%"])
+                            first = False
+                        else:
+                            demo_table.append(["", k, v, f"{100*v/len(eth_vals):.1f}%"])
+                # Race
+                race_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_race')]
+                race_vals = pd.Series(events_flat_df[race_cols].values.flatten()).dropna()
+                if not race_vals.empty:
+                    first = True
+                    for k, v in race_vals.value_counts().items():
+                        if first:
+                            demo_table.append(["Race", k, v, f"{100*v/len(race_vals):.1f}%"])
+                            first = False
+                        else:
+                            demo_table.append(["", k, v, f"{100*v/len(race_vals):.1f}%"])
+                demo_df = pd.DataFrame(demo_table, columns=["Patient Demographics", "Value", "Frequency", "Percentage"])
+                summary_blocks.append(demo_df)
+                summary_blocks.append(pd.DataFrame({'': ['']}))
+                # 3. Event/Product Characteristics: each table with column headers, no section header, no blank rows between
+                event_fields = [
+                    ('event_type', 'Event Type'),
+                    ('report_source_code', 'Report Source Code'),
+                    ('source_type', 'Source Type'),
+                    ('reporter_occupation_code', 'Reporter Occupation Code'),
+                    ('device_device_report_product_code', 'Device Product Code'),
+                    ('device_model_number', 'Device Model Number'),
+                    ('device_manufacturer_d_name', 'Device Manufacturer'),
+                    ('device_manufacturer_d_country', 'Manufacturer Country'),
+                    ('device_brand_name', 'Brand Name'),
+                    ('device_generic_name', 'Type of Device')
+                ]
+                for field, label in event_fields:
+                    cols = [c for c in events_flat_df.columns if c.startswith(field)]
+                    vals = pd.Series(events_flat_df[cols].values.flatten()).dropna()
+                    if not vals.empty:
+                        counts = vals.value_counts()
+                        table_rows = []
+                        table_rows.append([label, "Frequency", "Percentage"])
+                        for v in counts.index:
+                            table_rows.append([v, counts[v], f"{100*counts[v]/len(vals):.1f}%"])
+                        event_df = pd.DataFrame(table_rows[1:], columns=table_rows[0])
+                        summary_blocks.append(event_df)
+                summary_blocks.append(pd.DataFrame({'': ['']}))
+                # 4. Product Problems Table (no table header)
+                prod_cols = [c for c in events_flat_df.columns if c.startswith('product_problems')]
+                prod_vals = pd.Series(events_flat_df[prod_cols].values.flatten()).dropna()
+                prod_counts = prod_vals.value_counts()
+                prod_table_start = None
+                if not prod_counts.empty:
+                    prod_df = pd.DataFrame({'Product Problem': prod_counts.index, 'Frequency': prod_counts.values})
+                    prod_df['Percentage'] = prod_df['Frequency'].apply(lambda v: f"{100*v/len(prod_vals):.1f}%" if len(prod_vals) else '0%')
+                    prod_table_start = len(summary_blocks)
+                    summary_blocks.append(prod_df)
+                    summary_blocks.append(pd.DataFrame({'': ['']}))
+                # 5. Patient Problems Table (no table header)
+                pprob_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_problems')]
+                pprob_vals = pd.Series(events_flat_df[pprob_cols].values.flatten()).dropna()
+                pprob_counts = pprob_vals.value_counts()
+                pprob_table_start = None
+                if not pprob_counts.empty:
+                    pprob_df = pd.DataFrame({'Patient Problem': pprob_counts.index, 'Frequency': pprob_counts.values})
+                    pprob_df['Percentage'] = pprob_df['Frequency'].apply(lambda v: f"{100*v/len(pprob_vals):.1f}%" if len(pprob_vals) else '0%')
+                    pprob_table_start = len(summary_blocks)
+                    summary_blocks.append(pprob_df)
+                    summary_blocks.append(pd.DataFrame({'': ['']}))
+                # Write all summary blocks to the Summary sheet in the same writer session
+                # Add Events Missing Patient Data at the end
+                missing_patients = pd.read_sql_query('''
+                    SELECT e.id as event_id, e.report_number
+                    FROM events e
+                    LEFT JOIN patients p ON e.id = p.event_id
+                    WHERE p.id IS NULL
+                ''', conn)
+                if not missing_patients.empty:
+                    summary_blocks.append(pd.DataFrame({'Summary': ['Events Missing Patient Data']}))
+                    missing_patients_df = missing_patients.rename(columns={
+                        'event_id': 'Event ID',
+                        'report_number': 'Report Number'
+                    })
+                    summary_blocks.append(missing_patients_df)
+                    summary_blocks.append(pd.DataFrame({'': ['']}))
+                startrow = 0
+                table_starts = []
+                for block in summary_blocks:
+                    block.columns = [humanize(c) for c in block.columns]
+                    table_starts.append(startrow)
+                    block.to_excel(writer, sheet_name='Summary', index=False, startrow=startrow, header=True)
+                    startrow += len(block) + 2
+                # OPTIMIZATION 7: Simplified Excel formatting for better performance
+                from openpyxl.styles import PatternFill, Font
+                from openpyxl.chart import BarChart, Reference
+                wb = writer.book
+                ws = wb['Summary']
+                # Color map for tables
+                table_colors = ["34495E", "27AE60", "E67E22", "8E44AD", "2980B9"]
+                color_idx = 0
+                for i, start in enumerate(table_starts):
+                    # OPTIMIZATION: Only apply formatting to non-empty cells
+                    for row in ws.iter_rows(min_row=start+1, max_row=start+1):
+                        for cell in row:
+                            if cell.value:
+                                cell.fill = PatternFill(start_color=table_colors[color_idx%len(table_colors)], end_color=table_colors[color_idx%len(table_colors)], fill_type='solid')
+                                break  # Only format first non-empty cell in row
+                    color_idx += 1
+                # Add Excel bar charts for Product Problems and Patient Problems
+                def find_table_data_range(ws, header):
+                    # Find the header row
+                    for row in ws.iter_rows():
+                        if row[0].value == header:
+                            header_row = row[0].row
+                            break
+                    else:
+                        return None, None
+                    # Data starts after header
+                    data_start = header_row + 1
+                    # Data ends at first blank in col A
+                    data_end = data_start
+                    while ws[f'A{data_end}'].value:
+                        data_end += 1
+                    return data_start, data_end-1
+                # Product Problems chart
+                prod_data_start, prod_data_end = find_table_data_range(ws, "Product Problem")
+                if prod_data_start and prod_data_end > prod_data_start:
+                    chart = BarChart()
+                    chart.type = "bar"
+                    chart.style = 10
+                    chart.title = "Product Problems"
+                    chart.y_axis.title = "Problem"
+                    chart.x_axis.title = "Frequency"
+                    data = Reference(ws, min_col=2, min_row=prod_data_start, max_col=2, max_row=prod_data_end)
+                    cats = Reference(ws, min_col=1, min_row=prod_data_start, max_row=prod_data_end)
+                    chart.add_data(data, titles_from_data=False)
+                    chart.set_categories(cats)
+                    chart.shape = 4
+                    chart.height = max(7, (prod_data_end-prod_data_start+1)*0.5)
+                    ws.add_chart(chart, f'E{prod_data_start}')
+                # Patient Problems chart
+                pprob_data_start, pprob_data_end = find_table_data_range(ws, "Patient Problem")
+                if pprob_data_start and pprob_data_end > pprob_data_start:
+                    chart = BarChart()
+                    chart.type = "bar"
+                    chart.style = 11
+                    chart.title = "Patient Problems"
+                    chart.y_axis.title = "Problem"
+                    chart.x_axis.title = "Frequency"
+                    data = Reference(ws, min_col=2, min_row=pprob_data_start, max_col=2, max_row=pprob_data_end)
+                    cats = Reference(ws, min_col=1, min_row=pprob_data_start, max_row=pprob_data_end)
+                    chart.add_data(data, titles_from_data=False)
+                    chart.set_categories(cats)
+                    chart.shape = 4
+                    chart.height = max(7, (pprob_data_end-pprob_data_start+1)*0.5)
+                    ws.add_chart(chart, f'E{pprob_data_start}')
+                # Add Fields Reference sheet (fields.xlsx)
+                if os.path.exists(fields_path):
+                    fields_df = pd.read_excel(fields_path)
+                    fields_df.to_excel(writer, sheet_name='Fields Reference', index=False)
+        except Exception as e:
+            print(f"Error in export: {str(e)}")
+            raise e
+        # --- Excel formatting with openpyxl ---
+        from openpyxl import load_workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Side, Border
+        from openpyxl.utils import get_column_letter
+        wb = load_workbook(filename)
+        # Ensure all main sheets are visible
+        for sheet_name in ['Raw_Events', 'MDR_Texts', 'Custom_Events', 'Summary']:
+            if sheet_name in wb.sheetnames:
+                wb[sheet_name].sheet_state = 'visible'
+        # Reorder sheets using openpyxl's move_sheet
+        desired_order = ['Raw_Events', 'MDR_Texts', 'Custom_Events', 'Summary']
+        for idx, sheet_name in enumerate(desired_order):
+            if sheet_name in wb.sheetnames:
+                wb.move_sheet(wb[sheet_name], offset=idx - wb.sheetnames.index(sheet_name))
+        # Color sheet tabs
+        tab_colors = {
+            'Raw_Events': '1072BA',    # Blue
+            'MDR_Texts': 'E67E22',    # Orange
+            'Custom_Events': '27AE60',# Green
+            'Summary': '8E44AD'       # Purple
+        }
+        for sheet_name, color in tab_colors.items():
+            if sheet_name in wb.sheetnames:
+                wb[sheet_name].sheet_properties.tabColor = color
+        # Modern formatting for Custom_Events and Summary
+        for sheet_name in ['Custom_Events', 'Summary']:
+            if sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                # Bold, white font on colored header
+                header_fill = PatternFill(start_color='34495E', end_color='34495E', fill_type='solid')
+                header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
+                for cell in ws[1]:
+                    cell.font = header_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.fill = header_fill
+                # Freeze top row and first column
+                ws.freeze_panes = 'B2'
+                # Autofit column widths
+                for col in ws.columns:
+                    max_length = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col:
+                        try:
+                            if cell.value:
+                                max_length = max(max_length, len(str(cell.value)))
+                        except:
+                            pass
+                    ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
+                # Hot and cold alternating row shading
+                fill1 = PatternFill(start_color='FFE5D9', end_color='FFE5D9', fill_type='solid')  # Warm coral (hot)
+                fill2 = PatternFill(start_color='E3F0FF', end_color='E3F0FF', fill_type='solid')  # Cool blue (cold)
+                for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+                    fill = fill1 if i % 2 == 0 else fill2
+                    for cell in row:
+                        cell.fill = fill
+                # Add gridlines (borders) to all cells
+                thin = Side(border_style="thin", color="BBBBBB")
+                border = Border(left=thin, right=thin, top=thin, bottom=thin)
+                for row in ws.iter_rows():
+                    for cell in row:
+                        cell.border = border
+                # After writing all summary blocks to the Summary sheet, apply cell merging for improved demographics formatting
+                # Find the start row of the demographics table
+                demo_header = "Patient Demographics"
+                demo_start = None
+                for row in ws.iter_rows():
+                    if row[0].value == demo_header:
+                        demo_start = row[0].row
+                        break
+                # Note: demo_table formatting removed as it's no longer used in the new Summary structure
+        # Basic formatting for MDR_Texts (light gray header, gray text, subtle stripes)
+        if 'MDR_Texts' in wb.sheetnames:
+            ws = wb['MDR_Texts']
+            header_fill = PatternFill(start_color='E0E0E0', end_color='E0E0E0', fill_type='solid')
+            header_font = Font(bold=True, name='Calibri', size=12, color='333333')
+            for cell in ws[1]:
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.fill = header_fill
+            ws.freeze_panes = 'B2'
+            for col in ws.columns:
+                max_length = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
+            fill1 = PatternFill(start_color='F7F7F7', end_color='F7F7F7', fill_type='solid')
+            fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
+            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+                fill = fill1 if i % 2 == 0 else fill2
+                for cell in row:
+                    cell.fill = fill
+            thin = Side(border_style="thin", color="BBBBBB")
+            border = Border(left=thin, right=thin, top=thin, bottom=thin)
+            for row in ws.iter_rows():
+                for cell in row:
+                    cell.border = border
+        wb.save(filename)
+        return filename
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    with get_db_connection() as conn:
+        total_events = conn.execute('SELECT COUNT(*) as count FROM events').fetchone()['count']
+        is_fresh_start = (total_events == 0)
+    if request.method == 'POST':
+        product_code = request.form.get('product_code', '')
+        brand_name = request.form.get('brand_name', '')
+        device_generic_name = request.form.get('device_generic_name', '')
+        start_date = request.form.get('start_date', '')
+        end_date = request.form.get('end_date', '')
+        max_records = request.form.get('max_records', '')
+        manufacturer = request.form.get('manufacturer', '')
+        # Remove manufacturer from search logic
+        
+        # Build the query
+        base_query = "https://api.fda.gov/device/event.json?search="
+        search_params = []
+        if start_date and end_date:
+            search_params.append(f"date_received:[{start_date}+TO+{end_date}]")
+        if product_code:
+            codes = [c.strip() for c in product_code.split(',') if c.strip()]
+            if codes:
+                code_query = ' OR '.join([f'device.device_report_product_code:{c}*' for c in codes])
+                search_params.append(f'({code_query})')
+        if brand_name:
+            names = [n.strip() for n in brand_name.split(',') if n.strip()]
+            if names:
+                # Use phrase search for brand names with spaces
+                name_query = ' OR '.join([f'device.brand_name:"{n}"' for n in names])
+                search_params.append(f'({name_query})')
+        if device_generic_name:
+            generic_names = [n.strip() for n in device_generic_name.split(',') if n.strip()]
+            if generic_names:
+                # Use phrase search with word order variations for more precise matching
+                generic_queries = []
+                for name in generic_names:
+                    words = name.split()
+                    if len(words) > 1:
+                        # Create variations for multi-word terms
+                        generic_queries.append(f'device.generic_name:"{name}"')
+                        # Create FDA naming convention variations (comma-separated)
+                        if len(words) == 2:
+                            # Two words: "word1 word2" -> "word2, word1"
+                            reversed_name = ", ".join(reversed(words))
+                            generic_queries.append(f'device.generic_name:"{reversed_name}"')
+                        elif len(words) == 3:
+                            # Three words: "word1 word2 word3" -> "word3, word1 word2" and "word2 word3, word1"
+                            generic_queries.append(f'device.generic_name:"{words[2]}, {words[0]} {words[1]}"')
+                            generic_queries.append(f'device.generic_name:"{words[1]} {words[2]}, {words[0]}"')
+                        elif len(words) > 3:
+                            # Four+ words: create common FDA variations
+                            # "word1 word2 word3 word4" -> "word4, word1 word2 word3"
+                            generic_queries.append(f'device.generic_name:"{words[-1]}, {" ".join(words[:-1])}"')
+                            # Also try "word3 word4, word1 word2"
+                            if len(words) >= 4:
+                                generic_queries.append(f'device.generic_name:"{words[-2]} {words[-1]}, {" ".join(words[:-2])}"')
+                    else:
+                        # Single word - use phrase search
+                        generic_queries.append(f'device.generic_name:"{name}"')
+                generic_query = ' OR '.join(generic_queries)
+                search_params.append(f'({generic_query})')
+        if manufacturer:
+            manufacturers = [n.strip() for n in manufacturer.split(',') if n.strip()]
+            if manufacturers:
+                manufacturer_query = ' OR '.join([f'device.manufacturer_d_name:{n}*' for n in manufacturers])
+                search_params.append(f'({manufacturer_query})')
+        if search_params:
+            base_query += "+AND+".join(search_params)
+        else:
+            base_query += "*"  # Get all records if no filters
+        
+        max_records_int = None
+        if max_records:
+            try:
+                max_records_int = int(max_records)
+            except ValueError:
+                pass
+        
+        print(f"Fetching data with query: {base_query}")
+        # Fetch the first page to get the total count
+        preview_query = f"{base_query}&limit=1"
+        preview_response = requests.get(preview_query)
+        total_count = 0
+        if preview_response.status_code == 200:
+            preview_data = preview_response.json()
+            total_count = preview_data.get('meta', {}).get('results', {}).get('total', 0)
+        session['total_count'] = total_count
+        data = fetch_all_API_data(base_query, max_records_int)
+        
+        if data:
+            print(f"Saving {len(data)} records to database...")
+            save_comprehensive_data(data)
+            return redirect(url_for('results'))
+        else:
+            return render_template('index.html', error="No results found or an error occurred.", is_fresh_start=is_fresh_start)
+    return render_template('index.html', is_fresh_start=is_fresh_start)
+
+@app.route('/results')
+def results():
+    with get_db_connection() as conn:
+        total_events = conn.execute('SELECT COUNT(*) as count FROM events').fetchone()['count']
+        total_devices = conn.execute('SELECT COUNT(*) as count FROM devices').fetchone()['count']
+        total_patients = conn.execute('SELECT COUNT(*) as count FROM patients').fetchone()['count']
+        is_fresh_start = (total_events == 0)
+        # Get recent events
+        recent_events = conn.execute('''
+            SELECT e.report_number, e.event_type, e.date_received, d.manufacturer_d_name,
+                   d.brand_name, d.generic_name
+            FROM events e
+            LEFT JOIN devices d ON e.id = d.event_id
+            ORDER BY e.date_added DESC
+            LIMIT 50
+        ''').fetchall()
+    # Format date_received as mm/dd/yyyy
+    formatted_events = []
+    for event in recent_events:
+        event = dict(event)
+        if event['date_received']:
+            try:
+                dt = datetime.strptime(event['date_received'], '%Y%m%d')
+                event['date_received'] = dt.strftime('%m/%d/%Y')
+            except Exception:
+                pass
+        formatted_events.append(event)
+    total_count = session.get('total_count', None)
+    return render_template('results.html', 
+                         total_events=total_events,
+                         total_devices=total_devices,
+                         total_patients=total_patients,
+                         recent_events=formatted_events,
+                         total_count=total_count,
+                         is_fresh_start=is_fresh_start)
+
+@app.route('/export')
+def export_data():
+    try:
+        filename = export_to_excel()
+        return send_file(filename, as_attachment=True, download_name=filename)
+    except Exception as e:
+        return f"Error exporting data: {str(e)}", 500
+
+@app.route('/analytics')
+def analytics():
+    import pandas as pd
+    import json
+    with get_db_connection() as conn:
+        total_events = conn.execute('SELECT COUNT(*) as count FROM events').fetchone()['count']
+        is_fresh_start = (total_events == 0)
+        # Load all raw_json from events
+        events_df = pd.read_sql_query('SELECT id, raw_json FROM events', conn)
+        all_events_data = []
+        # Use the same field list as export_to_excel
+        field_list = [
+            'adverse_event_flag', 'product_problems', 'product_problem_flag', 'date_of_event', 'date_report', 'date_received',
+            'device_date_of_manufacturer', 'event_type', 'number_devices_in_event', 'number_patients_in_event', 'previous_use_code',
+            'remedial_action', 'removal_correction_number', 'report_number', 'single_use_flag', 'report_source_code',
+            'health_professional', 'reporter_occupation_code', 'initial_report_to_fda', 'reprocessed_and_reused_flag',
+            'device.device_sequence_number', 'device.device_event_key', 'device.date_received', 'device.brand_name',
+            'device.generic_name', 'device.udi_di', 'device.udi_public', 'device.device_report_product_code',
+            'device.model_number', 'device.catalog_number', 'device.lot_number', 'device.other_id_number',
+            'device.expiration_date_of_device', 'device.device_age_text', 'device.device_availability',
+            'device.date_returned_to_manufacturer', 'device.device_evaluated_by_manufacturer', 'device.device_operator',
+            'device.implant_flag', 'device.date_removed_flag', 'device.manufacturer_d_name', 'device.manufacturer_d_address_1',
+            'device.manufacturer_d_address_2', 'device.manufacturer_d_city', 'device.manufacturer_d_state',
+                    'device.manufacturer_d_zip_code', 'device.manufacturer_d_zip_code_ext', 'device.manufacturer_d_postal_code',
+        'device.manufacturer_d_country', 'device.device_class', 'device.device_name', 'device.fei_number', 'device.medical_specialty_description', 'device.registration_number', 'patient.date_received', 'patient.patient_sequence_number', 'patient.patient_age',
+        'patient.patient_sex', 'patient.patient_weight', 'patient.patient_ethnicity', 'patient.patient_race',
+        'patient.patient_problems', 'patient.sequence_number_outcome', 'patient.sequence_number_treatment',
+        'mdr_text.date_report', 'mdr_text.mdr_text_key', 'mdr_text.patient_sequence_number', 'mdr_text.text',
+        'mdr_text.text_type_code', 'type_of_report', 'date_facility_aware', 'report_date', 'report_to_fda',
+        'date_report_to_fda', 'report_to_manufacturer', 'date_report_to_manufacturer', 'event_location', 'distributor_name',
+        'distributor_address_1', 'distributor_address_2', 'distributor_city', 'distributor_state', 'distributor_zip_code',
+        'distributor_zip_code_ext', 'manufacturer_name', 'manufacturer_address_1', 'manufacturer_address_2',
+        'manufacturer_city', 'manufacturer_postal_code', 'manufacturer_state', 'manufacturer_zip_code',
+        'manufacturer_zip_code_ext', 'manufacturer_country', 'manufacturer_contact_address_1',
+        'manufacturer_contact_address_2', 'manufacturer_contact_area_code', 'manufacturer_contact_city',
+        'manufacturer_contact_country', 'manufacturer_contact_exchange', 'manufacturer_contact_extension',
+        'manufacturer_contact_t_name', 'manufacturer_contact_f_name', 'manufacturer_contact_l_name',
+        'manufacturer_contact_pcity', 'manufacturer_contact_pcountry', 'manufacturer_contact_phone_number',
+        'manufacturer_contact_plocal', 'manufacturer_contact_postal_code', 'manufacturer_contact_state',
+        'manufacturer_contact_zip_code', 'manufacturer_contact_zip_ext', 'manufacturer_gl_name', 'manufacturer_gl_city',
+        'manufacturer_gl_country', 'manufacturer_gl_postal_code', 'manufacturer_gl_state', 'manufacturer_gl_address_1',
+        'manufacturer_gl_address_2', 'manufacturer_gl_zip_code', 'manufacturer_gl_zip_code_ext', 'date_manufacturer_received',
+        'source_type', 'event_key', 'mdr_report_key', 'manufacturer_link_flag', 'device name', 'fei_number',
+        'medical_specialty_description', 'registration_number', 'regulation_number'
+        ]
+        def extract_event_fields(event, field_list, event_id=None):
+            result = {}
+            if event_id is not None:
+                result['event_id'] = event_id
+            # Top-level fields
+            for field in field_list:
+                if '.' not in field and not field.startswith('device') and not field.startswith('patient') and not field.startswith('mdr_text'):
+                    value = event.get(field, '')
+                    if isinstance(value, list):
+                        result[field] = ''
+                        for i, v in enumerate(value):
+                            result[f'{field}_{i+1}'] = v
+                    else:
+                        result[field] = value
+            # Device fields
+            devices = event.get('device', [])
+            for i, device in enumerate(devices):
+                for field in field_list:
+                    if field.startswith('device.'):
+                        subfield = field.split('.', 1)[1]
+                        value = device.get(subfield, '')
+                        if isinstance(value, list):
+                            result[f'device_{subfield}_{i+1}'] = ''
+                            for j, v in enumerate(value):
+                                result[f'device_{subfield}_{i+1}_{j+1}'] = v
+                        else:
+                            result[f'device_{subfield}_{i+1}'] = value
+            # Patient fields
+            patients = event.get('patient', [])
+            for i, patient in enumerate(patients):
+                for field in field_list:
+                    if field.startswith('patient.'):
+                        subfield = field.split('.', 1)[1]
+                        value = patient.get(subfield, '')
+                        if isinstance(value, list):
+                            result[f'patient_{subfield}_{i+1}'] = ''
+                            for j, v in enumerate(value):
+                                result[f'patient_{subfield}_{i+1}_{j+1}'] = v
+                        else:
+                            result[f'patient_{subfield}_{i+1}'] = value
+            return result
+        for _, row in events_df.iterrows():
+            if row['raw_json']:
+                try:
+                    event = json.loads(row['raw_json'])
+                    extracted = extract_event_fields(event, field_list, event_id=row['id'])
+                    all_events_data.append(extracted)
+                except Exception as e:
+                    all_events_data.append({'event_id': row['id'], 'error': str(e)})
+        if not all_events_data:
+            # fallback: show page with no data
+            return render_template('analytics.html',
+                total_reports=0,
+                patient_demographics=[],
+                event_type_table=[],
+                report_source_table=[],
+                source_type_table=[],
+                occupation_table=[],
+                product_code_table=[],
+                model_number_table=[],
+                manufacturer_table=[],
+                manufacturer_country_table=[],
+                brand_name_table=[],
+                product_problems_table=[],
+                patient_problems_table=[],
+                missing_patients=[])
+        df = pd.DataFrame(all_events_data)
+        total_reports = len(df)
+        # Patient Demographics
+        def extract_numeric(val):
+            import re
+            if pd.isnull(val):
+                return None
+            match = re.search(r'\d+(\.\d+)?', str(val))
+            return float(match.group()) if match else None
+        demo_table = []
+        # Age
+        age_cols = [c for c in df.columns if c.startswith('patient_patient_age')]
+        ages = pd.Series([extract_numeric(v) for v in df[age_cols].values.flatten()]).dropna()
+        age_val = f"{int(ages.median())} ({int(ages.min())}-{int(ages.max())})" if not ages.empty else "N/A"
+        demo_table.append({"characteristic": "Age (years) median (range)", "value": age_val, "frequency": "", "percentage": ""})
+        # Weight
+        weight_cols = [c for c in df.columns if c.startswith('patient_patient_weight')]
+        weights = pd.Series([extract_numeric(v) for v in df[weight_cols].values.flatten()]).dropna()
+        weight_val = f"{weights.median():.1f} ({weights.min():.1f}-{weights.max():.1f})" if not weights.empty else "N/A"
+        demo_table.append({"characteristic": "Weight median (range)", "value": weight_val, "frequency": "", "percentage": ""})
+        # Sex
+        sex_cols = [c for c in df.columns if c.startswith('patient_patient_sex')]
+        sex_vals = pd.Series(df[sex_cols].values.flatten()).dropna()
+        for i, (k, v) in enumerate(sex_vals.value_counts().items()):
+            demo_table.append({
+                "characteristic": "Sex" if i == 0 else "", "value": k, "frequency": v, "percentage": f"{100*v/len(sex_vals):.1f}%"})
+        # Ethnicity
+        eth_cols = [c for c in df.columns if c.startswith('patient_patient_ethnicity')]
+        eth_vals = pd.Series(df[eth_cols].values.flatten()).dropna()
+        for i, (k, v) in enumerate(eth_vals.value_counts().items()):
+            demo_table.append({
+                "characteristic": "Ethnicity" if i == 0 else "", "value": k, "frequency": v, "percentage": f"{100*v/len(eth_vals):.1f}%"})
+        # Race
+        race_cols = [c for c in df.columns if c.startswith('patient_patient_race')]
+        race_vals = pd.Series(df[race_cols].values.flatten()).dropna()
+        for i, (k, v) in enumerate(race_vals.value_counts().items()):
+            demo_table.append({
+                "characteristic": "Race" if i == 0 else "", "value": k, "frequency": v, "percentage": f"{100*v/len(race_vals):.1f}%"})
+        patient_demographics = demo_table
+        # Helper for event/product tables
+        def make_table(df, prefix, label):
+            cols = [c for c in df.columns if c.startswith(prefix)]
+            vals = pd.Series(df[cols].values.flatten()).dropna()
+            total = len(vals)
+            counts = vals.value_counts()
+            return [{"label": k, "count": v, "percent": f"{100*v/total:.1f}%"} for k, v in counts.items()] if total > 0 else []
+        # Event/Product Characteristics
+        event_type_table = make_table(df, 'event_type', 'Event Type')
+        report_source_table = make_table(df, 'report_source_code', 'Report Source')
+        source_type_table = make_table(df, 'source_type', 'Source Type')
+        occupation_table = make_table(df, 'reporter_occupation_code', 'Reporter Occupation Code')
+        product_code_table = make_table(df, 'device_device_report_product_code', 'Device Product Code')
+        model_number_table = make_table(df, 'device_model_number', 'Device Model Number')
+        manufacturer_table = make_table(df, 'device_manufacturer_d_name', 'Device Manufacturer')
+        manufacturer_country_table = make_table(df, 'device_manufacturer_d_country', 'Manufacturer Country')
+        brand_name_table = make_table(df, 'device_brand_name', 'Brand Name')
+        # Type of Device (Generic Name)
+        generic_name_table = make_table(df, 'device_generic_name', 'Type of Device')
+        # Product Problems
+        prod_cols = [c for c in df.columns if c.startswith('product_problems')]
+        prod_vals = pd.Series(df[prod_cols].values.flatten()).dropna()
+        total_prod = len(prod_vals)
+        prod_counts = prod_vals.value_counts()
+        product_problems_table = [{"label": k, "count": v, "percent": f"{100*v/total_prod:.1f}%"} for k, v in prod_counts.items()] if total_prod > 0 else []
+        # Patient Problems
+        pprob_cols = [c for c in df.columns if c.startswith('patient_patient_problems')]
+        pprob_vals = pd.Series(df[pprob_cols].values.flatten()).dropna()
+        total_pprob = len(pprob_vals)
+        pprob_counts = pprob_vals.value_counts()
+        patient_problems_table = [{"label": k, "count": v, "percent": f"{100*v/total_pprob:.1f}%"} for k, v in pprob_counts.items()] if total_pprob > 0 else []
+        # Events missing patient data (as before)
+        missing_patients = conn.execute('''
+            SELECT e.id as event_id, e.report_number
+            FROM events e
+            LEFT JOIN patients p ON e.id = p.event_id
+            WHERE p.id IS NULL
+        ''').fetchall()
+        # --- Dynamic Chart Data Preparation ---
+        # 1. Event Types per Brand Name (top 10 brands)
+        brand_cols = [c for c in df.columns if c.startswith('device_brand_name')]
+        eventtype_cols = [c for c in df.columns if c.startswith('event_type')]
+        brand_eventtype_pairs = []
+        for i in range(len(df)):
+            brands = [df.iloc[i][col] for col in brand_cols if pd.notnull(df.iloc[i][col]) and str(df.iloc[i][col]).strip()]
+            event_types = [df.iloc[i][col] for col in eventtype_cols if pd.notnull(df.iloc[i][col]) and str(df.iloc[i][col]).strip()]
+            for b in brands:
+                for e in event_types:
+                    brand_eventtype_pairs.append((b, e))
+        import collections
+        brand_counts = collections.Counter([b for b, _ in brand_eventtype_pairs])
+        top_brands = [b for b, _ in brand_counts.most_common(10)]
+        filtered_pairs = [(b, e) for b, e in brand_eventtype_pairs if b in top_brands]
+        # Build a nested dict: {brand: {event_type: count}}
+        brand_eventtype_dict = collections.defaultdict(lambda: collections.Counter())
+        for b, e in filtered_pairs:
+            brand_eventtype_dict[b][e] += 1
+        # Convert to list of dicts for JSON
+        brand_eventtype_data = []
+        for b in top_brands:
+            entry = {'brand': b}
+            entry.update(brand_eventtype_dict[b])
+            brand_eventtype_data.append(entry)
+        # Pass as JSON
+        import json as _json
+    return render_template('analytics.html',
+        total_reports=total_reports,
+        patient_demographics=patient_demographics,
+        event_type_table=event_type_table,
+        report_source_table=report_source_table,
+        source_type_table=source_type_table,
+        occupation_table=occupation_table,
+        product_code_table=product_code_table,
+        model_number_table=model_number_table,
+        manufacturer_table=manufacturer_table,
+        manufacturer_country_table=manufacturer_country_table,
+        brand_name_table=brand_name_table,
+        generic_name_table=generic_name_table,
+        product_problems_table=product_problems_table,
+        patient_problems_table=patient_problems_table,
+        missing_patients=missing_patients,
+        is_fresh_start=is_fresh_start,
+        brand_eventtype_data=_json.dumps(brand_eventtype_data)
+    )
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/clear_data', methods=['POST'])
+def clear_data():
+    with get_db_connection() as conn:
+        conn.execute('DELETE FROM mdr_texts')
+        conn.execute('DELETE FROM patients')
+        conn.execute('DELETE FROM devices')
+        conn.execute('DELETE FROM events')
+        conn.commit()
+    session['total_count'] = None  # Reset the total_count for the results page
+    return redirect(url_for('index'))
+
+@app.route('/download/fields-yaml')
+def download_fields_yaml():
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    return send_from_directory(BASE_DIR, 'fields.yaml', as_attachment=True)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host='0.0.0.0', port=5005, debug=True)

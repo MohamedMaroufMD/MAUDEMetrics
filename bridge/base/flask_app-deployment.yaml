@@ -1,0 +1,39 @@
+#! flask_app-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: flask-app
+    namespace: maudemetrics
+    labels:
+        com.docker.compose.project: MAUDEMetrics
+        com.docker.compose.service: flask_app
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: MAUDEMetrics
+            com.docker.compose.service: flask_app
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: MAUDEMetrics
+                com.docker.compose.service: flask_app
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: flask-app
+                  image: MAUDEMetrics-flask_app
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                    - name: flask-app-5005
+                      containerPort: 5005
+                  volumeMounts:
+                    - name: app-reports
+                      mountPath: /app/reports
+            volumes:
+                - name: app-reports
+                  hostPath:
+                    path: /Users/mohamedmarouf/Desktop/MAUDEMetrics/reports
