@@ -115,9 +115,24 @@ open http://localhost:5005
 
 ### Manual Setup (without Docker)
 
+> **Note:** This project requires Python 3.11. Newer versions (e.g., Python 3.13) are not yet supported by all dependencies.
+
+### Prerequisites
+
+- Python 3.11 installed
+
+### Steps
+
 ```bash
-pip3 install -r requirements.txt
-python3 app.py
+# 1. Create a virtual environment (recommended)
+python3.11 -m venv venv
+source venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Run the app
+python app.py
 ```
 
 Then visit [http://localhost:5005](http://localhost:5005) in your browser.
