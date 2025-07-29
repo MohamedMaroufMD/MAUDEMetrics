@@ -86,7 +86,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 > 
 > _The analytics dashboard now features an interactive chart with modern multi-select filters (checkboxes and search) for Brand Name and Event Type._
 
-![Home Page](screenshots/1. Home Page.png)
+![Home Page](screenshots/1.%20Home%20Page.png)
 
 ---
 
