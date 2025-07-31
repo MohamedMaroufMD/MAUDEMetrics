@@ -28,9 +28,6 @@ from datetime import datetime
 import json
 import os
 import re
-import yaml
-import matplotlib.pyplot as plt
-import tempfile
 
 app = Flask(__name__)
 app.secret_key = 'replace_this_with_a_random_secret_key_12345'
@@ -289,24 +286,7 @@ def save_comprehensive_data(data):
         
         conn.commit()
 
-def flatten_json(y, parent_key='', sep='.'): 
-    items = []
-    if isinstance(y, str):
-        try:
-            y = json.loads(y)
-        except Exception:
-            return {parent_key: y} if parent_key else {'value': y}
-    if isinstance(y, dict):
-        for k, v in y.items():
-            new_key = f"{parent_key}{sep}{k}" if parent_key else k
-            items.extend(flatten_json(v, new_key, sep=sep).items())
-    elif isinstance(y, list):
-        for i, v in enumerate(y):
-            new_key = f"{parent_key}{sep}{i}" if parent_key else str(i)
-            items.extend(flatten_json(v, new_key, sep=sep).items())
-    else:
-        items.append((parent_key, y))
-    return dict(items)
+
 
 def sanitize_text(text):
     if not isinstance(text, str):
@@ -334,43 +314,7 @@ def sanitize_df(df):
             df[col] = df[col].apply(sanitize_text)
     return df
 
-def pivot_event_record(flat_data, repeated_fields_map, max_counts):
-    """
-    Given a flat event dict, pivot repeated fields into separate columns.
-    repeated_fields_map: dict of {field_prefix: [json_path_prefixes]}
-    max_counts: dict of {field_prefix: max_count}
-    """
-    pivoted = {}
-    for k, v in flat_data.items():
-        matched = False
-        for prefix, paths in repeated_fields_map.items():
-            for path in paths:
-                if k.startswith(path):
-                    # e.g. device.0.model_number -> device_model_number_1
-                    idx = k[len(path):].split('.', 1)[0]
-                    try:
-                        idx_int = int(idx)
-                    except Exception:
-                        continue
-                    colname = f"{prefix}_{idx_int+1}"
-                    if colname in pivoted:
-                        # Concatenate extras
-                        pivoted[colname] = str(pivoted[colname]) + "; " + str(v)
-                    else:
-                        pivoted[colname] = v
-                    matched = True
-                    break
-            if matched:
-                break
-        if not matched:
-            pivoted[k] = v
-    # For each repeated field, if there are more values than max, concatenate extras
-    for prefix, max_count in max_counts.items():
-        for i in range(1, max_count+1):
-            colname = f"{prefix}_{i}"
-            if colname not in pivoted:
-                pivoted[colname] = ''
-    return pivoted
+
 
 def extract_event_fields(event, field_list, event_id=None):
     """
@@ -459,63 +403,7 @@ def export_to_excel():
     array_fields = [
         'product_problems', 'patient_patient_problems', 'patient_sequence_number_outcome', 'patient_sequence_number_treatment'
     ]
-    def extract_main_fields(event, event_id=None, main_fields=main_fields, array_fields=array_fields):
-        result = {}
-        if event_id is not None:
-            result['event_id'] = event_id
-        def add_array_field(base, values):
-            if isinstance(values, str) or not hasattr(values, '__iter__'):
-                values = [values] if values else []
-            for i, v in enumerate(values):
-                result[f'{base}_{i+1}'] = v
-        for field in main_fields:
-            if field == 'event_id':
-                continue
-            elif field == 'maude_report_link':
-                mdr_report_key = event.get('mdr_report_key', '')
-                maude_link = ''
-                devices = event.get('device', [])
-                if mdr_report_key:
-                    pc = ''
-                    seq = ''
-                    if devices and isinstance(devices, list) and devices:
-                        pc = devices[0].get('device_report_product_code', '')
-                        seq = devices[0].get('device_sequence_number', '')
-                    if pc and seq:
-                        maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}&device_sequence_no={seq}"
-                    else:
-                        maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}"
-                result['maude_report_link'] = maude_link
-            elif field.startswith('device_'):
-                devices = event.get('device', [])
-                subfield = field.replace('device_', '')
-                if devices and isinstance(devices, list) and devices:
-                    value = devices[0].get(subfield, '')
-                    # If value is array, add as multiple columns
-                    if isinstance(value, list):
-                        add_array_field(field, value)
-                    else:
-                        result[field] = value
-                else:
-                    result[field] = ''
-            elif field.startswith('patient_'):
-                patients = event.get('patient', [])
-                subfield = field.replace('patient_', '')
-                if patients and isinstance(patients, list) and patients:
-                    value = patients[0].get(subfield, '')
-                    # If value is array, add as multiple columns
-                    if isinstance(value, list):
-                        add_array_field(field, value)
-                    else:
-                        result[field] = value
-                else:
-                    result[field] = ''
-            elif field in array_fields:
-                add_array_field(field, event.get(field, []))
-            else:
-                value = event.get(field, '')
-                result[field] = value
-        return result
+    
     # Use the user-provided field list
     field_list = [
         'adverse_event_flag', 'product_problems', 'product_problem_flag', 'date_of_event', 'date_report', 'date_received',
@@ -588,18 +476,7 @@ def export_to_excel():
                     match = re.search(r'\d+(\.\d+)?', str(val))
                     return float(match.group()) if match else None
                 
-                # Additional data validation function
-                def validate_cell_value(val):
-                    """Validate and clean cell values before writing to Excel"""
-                    if pd.isna(val) or val is None:
-                        return ""
-                    val_str = str(val)
-                    # Apply additional sanitization for Excel compatibility
-                    val_str = sanitize_text(val_str)
-                    # Ensure the string is not too long for Excel
-                    if len(val_str) > 32000:
-                        val_str = val_str[:32000] + "..."
-                    return val_str
+
                 
                 # 1. EVENTS - Extract only user-specified fields, event_id as first column (OPTIMIZED)
                 events_query = 'SELECT id, raw_json FROM events ORDER BY id'
@@ -1292,6 +1169,7 @@ def analytics():
                 return None
             match = re.search(r'\d+(\.\d+)?', str(val))
             return float(match.group()) if match else None
+
         demo_table = []
         # Age
         age_cols = [c for c in df.columns if c.startswith('patient_patient_age')]
@@ -1422,10 +1300,7 @@ def clear_data():
     session['total_count'] = None  # Reset the total_count for the results page
     return redirect(url_for('index'))
 
-@app.route('/download/fields-yaml')
-def download_fields_yaml():
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    return send_from_directory(BASE_DIR, 'fields.yaml', as_attachment=True)
+
 
 if __name__ == "__main__":
     init_db()
