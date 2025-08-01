@@ -187,4 +187,7 @@ The development of MAUDEMetrics was supported by the openFDA API initiative, whi
 6. Reitz, K. (2023). Requests: HTTP for Humans. https://requests.readthedocs.io/
 7. Clark, C. (2023). OpenPyXL: A Python library for reading and writing Excel 2010 xlsx/xlsm/xltx/xltm files. https://openpyxl.readthedocs.io/
 8. Bootstrap Team. (2023). Bootstrap: The most popular HTML, CSS, and JS library in the world. https://getbootstrap.com/
-9. SQLite Development Team. (2023). SQLite: Small, fast, self-contained, high-reliability, full-featured SQL database engine. https://www.sqlite.org/ 
+9. SQLite Development Team. (2023). SQLite: Small, fast, self-contained, high-reliability, full-featured SQL database engine. https://www.sqlite.org/
+10. Docker Inc. (2023). Docker: Empowering App Development for Developers. https://www.docker.com/
+11. Docker Inc. (2023). Docker Compose: Define and run multi-container Docker applications. https://docs.docker.com/compose/
+12. Kubernetes Authors. (2023). Kubernetes: Production-Grade Container Orchestration. https://kubernetes.io/ 
