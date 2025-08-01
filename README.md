@@ -68,6 +68,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Intuitive Navigation:** Clear, consistent user experience
 - **Professional Styling:** Clean, medical-grade interface
 - **Modern Multi-Select Filters:** Interactive dropdowns with checkboxes and search (Choices.js) for analytics filtering
+- **User-Friendly Feedback:** Clear status messages and loading indicators
 
 ### 🔧 Technical Features
 - **Flask Backend:** Python-based web framework
@@ -202,6 +203,9 @@ A: No, all searches are case-insensitive with partial matching.
 
 **Q: How are dates formatted in exports?**  
 A: All dates are consistently formatted as mm/dd/yyyy across all sheets.
+
+**Q: What makes the Custom_Events sheet special?**  
+A: It's the premium "golden sheet" with professional formatting, smart column organization, and optimized performance for the best user experience.
 
 ---
 
