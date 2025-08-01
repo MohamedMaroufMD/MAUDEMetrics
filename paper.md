@@ -179,7 +179,7 @@ The development of MAUDEMetrics was supported by the openFDA API initiative, whi
 
 # References
 
-1. U.S. Food and Drug Administration. (2024). Manufacturer and User Facility Device Experience (MAUDE). https://www.fda.gov/medical-devices/mandatory-reporting-requirements-manufacturers-importers-and-device-user-facilities/manufacturer-and-user-facility-device-experience-maude
+1. U.S. Food and Drug Administration. (2024). Manufacturer and User Facility Device Experience (MAUDE). https://www.fda.gov/medical-devices/postmarket-requirements-devices/mandatory-reporting-requirements-manufacturers-importers-and-device-user-facilities
 2. openFDA. (2024). Device Event API. https://open.fda.gov/apis/device/event/
 3. Flask Development Team. (2023). Flask: A lightweight WSGI web application framework. https://flask.palletsprojects.com/
 4. McKinney, W. (2010). Data structures for statistical computing in Python. Proceedings of the 9th Python in Science Conference, 51-56.
