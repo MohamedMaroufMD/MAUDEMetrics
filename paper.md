@@ -182,4 +182,9 @@ The development of MAUDEMetrics was supported by the openFDA API initiative, whi
 1. U.S. Food and Drug Administration. (2024). Manufacturer and User Facility Device Experience (MAUDE). https://www.fda.gov/medical-devices/mandatory-reporting-requirements-manufacturers-importers-and-device-user-facilities/manufacturer-and-user-facility-device-experience-maude
 2. openFDA. (2024). Device Event API. https://open.fda.gov/apis/device/event/
 3. Flask Development Team. (2023). Flask: A lightweight WSGI web application framework. https://flask.palletsprojects.com/
-4. McKinney, W. (2010). Data structures for statistical computing in Python. Proceedings of the 9th Python in Science Conference, 51-56. 
+4. McKinney, W. (2010). Data structures for statistical computing in Python. Proceedings of the 9th Python in Science Conference, 51-56.
+5. NumPy Developers. (2023). NumPy: The fundamental package for scientific computing with Python. https://numpy.org/
+6. Reitz, K. (2023). Requests: HTTP for Humans. https://requests.readthedocs.io/
+7. Clark, C. (2023). OpenPyXL: A Python library for reading and writing Excel 2010 xlsx/xlsm/xltx/xltm files. https://openpyxl.readthedocs.io/
+8. Bootstrap Team. (2023). Bootstrap: The most popular HTML, CSS, and JS library in the world. https://getbootstrap.com/
+9. SQLite Development Team. (2023). SQLite: Small, fast, self-contained, high-reliability, full-featured SQL database engine. https://www.sqlite.org/ 
