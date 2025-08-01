@@ -404,7 +404,7 @@ def export_to_excel():
         'product_problems', 'patient_patient_problems', 'patient_sequence_number_outcome', 'patient_sequence_number_treatment'
     ]
     
-    # Use the user-provided field list
+    # Use the user-provided field list (excluding distributor and manufacturer contact fields for performance)
     field_list = [
         'adverse_event_flag', 'product_problems', 'product_problem_flag', 'date_of_event', 'date_report', 'date_received',
         'device_date_of_manufacturer', 'event_type', 'number_devices_in_event', 'number_patients_in_event', 'previous_use_code',
@@ -423,17 +423,9 @@ def export_to_excel():
         'patient.patient_problems', 'patient.sequence_number_outcome', 'patient.sequence_number_treatment',
         'mdr_text.date_report', 'mdr_text.mdr_text_key', 'mdr_text.patient_sequence_number', 'mdr_text.text',
         'mdr_text.text_type_code', 'type_of_report', 'date_facility_aware', 'report_date', 'report_to_fda',
-        'date_report_to_fda', 'report_to_manufacturer', 'date_report_to_manufacturer', 'event_location', 'distributor_name',
-        'distributor_address_1', 'distributor_address_2', 'distributor_city', 'distributor_state', 'distributor_zip_code',
-        'distributor_zip_code_ext', 'manufacturer_name', 'manufacturer_address_1', 'manufacturer_address_2',
+        'date_report_to_fda', 'report_to_manufacturer', 'date_report_to_manufacturer', 'event_location', 'manufacturer_name', 'manufacturer_address_1', 'manufacturer_address_2',
         'manufacturer_city', 'manufacturer_postal_code', 'manufacturer_state', 'manufacturer_zip_code',
-        'manufacturer_zip_code_ext', 'manufacturer_country', 'manufacturer_contact_address_1',
-        'manufacturer_contact_address_2', 'manufacturer_contact_area_code', 'manufacturer_contact_city',
-        'manufacturer_contact_country', 'manufacturer_contact_exchange', 'manufacturer_contact_extension',
-        'manufacturer_contact_t_name', 'manufacturer_contact_f_name', 'manufacturer_contact_l_name',
-        'manufacturer_contact_pcity', 'manufacturer_contact_pcountry', 'manufacturer_contact_phone_number',
-        'manufacturer_contact_plocal', 'manufacturer_contact_postal_code', 'manufacturer_contact_state',
-        'manufacturer_contact_zip_code', 'manufacturer_contact_zip_ext', 'manufacturer_gl_name', 'manufacturer_gl_city',
+        'manufacturer_zip_code_ext', 'manufacturer_country', 'manufacturer_gl_name', 'manufacturer_gl_city',
         'manufacturer_gl_country', 'manufacturer_gl_postal_code', 'manufacturer_gl_state', 'manufacturer_gl_address_1',
         'manufacturer_gl_address_2', 'manufacturer_gl_zip_code', 'manufacturer_gl_zip_code_ext', 'date_manufacturer_received',
         'source_type', 'event_key', 'mdr_report_key', 'manufacturer_link_flag', 'device name', 'fei_number',
@@ -538,30 +530,115 @@ def export_to_excel():
                     main_fields_df = events_flat_df[main_fields_cols + extra_cols]
                     main_fields_df = format_all_date_columns(main_fields_df)
                     
-                    # Remove completely blank columns (no entries at all)
-                    # Keep columns that have ANY entries, even if they're all NaN, None, null, etc.
+                    # Remove completely blank columns (no data except header)
                     blank_cols = []
                     for col in main_fields_df.columns:
-                        # Check if the column has any entries at all (even if they're NaN, None, null)
-                        has_any_entries = False
+                        # Check if the column has any non-blank data (excluding header)
+                        has_data = False
                         for val in main_fields_df[col]:
-                            # If there's any value (even NaN, None, null), consider it an entry
-                            if pd.notna(val) or val is None:
-                                has_any_entries = True
+                            # Check for actual data (not NaN, None, empty string, or whitespace)
+                            if pd.notna(val) and val is not None and str(val).strip() != '':
+                                has_data = True
                                 break
-                        if not has_any_entries:
+                        if not has_data:
                             blank_cols.append(col)
                     
-                    # Remove only the completely blank columns
+                    # Remove columns with no data
                     if blank_cols:
+                        print(f"Removing {len(blank_cols)} blank columns from Custom_Events: {blank_cols}")
                         main_fields_df = main_fields_df.drop(columns=blank_cols)
                     
-                    # Define and apply humanize function to columns
-                    def humanize(col):
+                    # Enhanced humanize function for professional column naming
+                    def enhanced_humanize(col):
                         if not isinstance(col, str):
                             return col
+                        field_mapping = {
+                            'event_id': 'Event ID',
+                            'report_number': 'Report Number',
+                            'mdr_report_key': 'MDR Report Key',
+                            'maude_report_link': 'MAUDE Report Link',
+                            'date_of_event': 'Event Date',
+                            'date_report': 'Report Date',
+                            'date_received': 'Date Received',
+                            'date_manufacturer_received': 'Date Manufacturer Received',
+                            'device_date_received': 'Device Date Received',
+                            'device_expiration_date_of_device': 'Device Expiration Date Of Device',
+                            'patient_date_received': 'Patient Date Received',
+                            'device_generic_name': 'Device Type',
+                            'device_brand_name': 'Device Brand Name',
+                            'device_manufacturer_d_name': 'Manufacturer',
+                            'device_device_report_product_code': 'Product Code',
+                            'device_model_number': 'Model Number',
+                            'device_lot_number': 'Lot Number',
+                            'device_device_availability': 'Device Availability',
+                            'device_device_evaluated_by_manufacturer': 'Device Evaluated By Manufacturer',
+                            'device_manufacturer_d_country': 'Manufacturer Country',
+                            'single_use_flag': 'Single Use Flag',
+                            'reprocessed_and_reused_flag': 'Reprocessed And Reused Flag',
+                            'device_device_operator': 'Device Operator',
+                            'report_source_code': 'Report Source Code',
+                            'health_professional': 'Health Professional',
+                            'reporter_occupation_code': 'Reporter Occupation Code',
+                            'source_type': 'Source Type',
+                            'patient_patient_age': 'Patient Age',
+                            'patient_patient_sex': 'Patient Sex',
+                            'patient_patient_weight': 'Patient Weight',
+                            'patient_patient_ethnicity': 'Patient Ethnicity',
+                            'patient_patient_race': 'Patient Race',
+                            'event_type': 'Event Type',
+                            'adverse_event_flag': 'Adverse Event Flag',
+                            'patient_patient_problems': 'Patient Problems',
+                            'patient_sequence_number_outcome': 'Patient Outcome',
+                            'patient_sequence_number_treatment': 'Patient Treatment',
+                            'product_problem_flag': 'Product Problem Flag',
+                            'product_problems': 'Product Problems',
+                            'date_report_to_fda': 'Date Report To Fda',
+                            'date_report_to_manufacturer': 'Date Report To Manufacturer'
+                        }
+                        if col in field_mapping:
+                            return field_mapping[col]
+                        # Handle array fields with numbers
+                        if '_' in col and col[-1].isdigit():
+                            base_field = col.rsplit('_', 1)[0]
+                            number = col.rsplit('_', 1)[1]
+                            if base_field in field_mapping:
+                                return f"{field_mapping[base_field]} {number}"
+                            # Handle special cases for nested array fields
+                            elif base_field.endswith('_1') and base_field[:-2] in field_mapping:
+                                base_base_field = base_field[:-2]
+                                return f"{field_mapping[base_base_field]} 1 {number}"
                         return col.replace('_', ' ').replace('.', ' ').title()
-                    main_fields_df.columns = [humanize(c) for c in main_fields_df.columns]
+                    
+                    # Apply enhanced column naming
+                    main_fields_df.columns = [enhanced_humanize(c) for c in main_fields_df.columns]
+                    
+                    # Intelligent column reordering for Custom_Events sheet
+                    priority_columns = [
+                        'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link',
+                        'Event Date', 'Report Date', 'Date Received', 'Event Type',
+                        'Product Problems', 'Adverse Event Flag', 'Product Problem Flag',
+                        'Date Report To Fda', 'Date Report To Manufacturer', 'Date Manufacturer Received',
+                        'Device Date Received 1', 'Device Expiration Date Of Device 1', 'Patient Date Received 1',
+                        'Device Type 1', 'Device Brand Name 1', 'Manufacturer 1',
+                        'Product Code 1', 'Model Number 1', 'Lot Number 1',
+                        'Device Availability 1', 'Device Evaluated By Manufacturer 1',
+                        'Manufacturer Country 1', 'Single Use Flag', 'Reprocessed And Reused Flag',
+                        'Device Operator 1', 'Report Source Code', 'Health Professional',
+                        'Reporter Occupation Code', 'Source Type', 'Source Type 1', 'Source Type 2',
+                        'Source Type 3', 'Source Type 4', 'Source Type 5', 'Patient Age 1',
+                        'Patient Sex 1', 'Patient Weight 1', 'Patient Ethnicity 1', 'Patient Race 1',
+                        'Patient Problems 1', 'Patient Patient Problems 1 1', 'Patient Patient Problems 1 2',
+                        'Patient Patient Problems 1 3', 'Patient Patient Problems 1 4'
+                    ]
+                    
+                    # Reorder columns: priority columns first, then others
+                    available_priority_cols = [col for col in priority_columns if col in main_fields_df.columns]
+                    other_cols = [col for col in main_fields_df.columns if col not in available_priority_cols]
+                    reordered_cols = available_priority_cols + other_cols
+                    
+                    # Apply reordering
+                    main_fields_df = main_fields_df[reordered_cols]
+                    
                     main_fields_df.to_excel(writer, sheet_name='Custom_Events', index=False)
                 # 2. MDR TEXTS - Add event_id, mdr_report_key, and maude_report_link (link only for first row per event_id)
                 mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
@@ -600,6 +677,19 @@ def export_to_excel():
                 # Reorder and filter columns for MDR_Texts sheet
                 mdr_cols = ['event_id', 'text_type_code', 'mdr_report_key', 'maude_report_link', 'text']
                 mdr_texts_df = mdr_texts_df[[col for col in mdr_cols if col in mdr_texts_df.columns]]
+                
+                # Remove repeated values in MDR_Texts sheet (keep first occurrence, empty the rest)
+                dedup_columns = ['event_id', 'text_type_code', 'mdr_report_key', 'maude_report_link']
+                for col in dedup_columns:
+                    if col in mdr_texts_df.columns:
+                        prev_value = None
+                        for idx in mdr_texts_df.index:
+                            current_value = mdr_texts_df.at[idx, col]
+                            if current_value == prev_value:
+                                mdr_texts_df.at[idx, col] = ''
+                            else:
+                                prev_value = current_value
+                
                 mdr_texts_df.to_excel(writer, sheet_name='MDR_Texts', index=False)
                 # --- Improved All-in-One Summary Sheet ---
                 summary_blocks = []
@@ -728,7 +818,7 @@ def export_to_excel():
                 startrow = 0
                 table_starts = []
                 for block in summary_blocks:
-                    block.columns = [humanize(c) for c in block.columns]
+                    block.columns = [enhanced_humanize(c) for c in block.columns]
                     table_starts.append(startrow)
                     block.to_excel(writer, sheet_name='Summary', index=False, startrow=startrow, header=True)
                     startrow += len(block) + 2
@@ -827,62 +917,88 @@ def export_to_excel():
         for sheet_name, color in tab_colors.items():
             if sheet_name in wb.sheetnames:
                 wb[sheet_name].sheet_properties.tabColor = color
-        # Modern formatting for Custom_Events and Summary
-        for sheet_name in ['Custom_Events', 'Summary']:
-            if sheet_name in wb.sheetnames:
-                ws = wb[sheet_name]
-                # Bold, white font on colored header
-                header_fill = PatternFill(start_color='34495E', end_color='34495E', fill_type='solid')
-                header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
-                for cell in ws[1]:
-                    cell.font = header_font
-                    cell.alignment = Alignment(horizontal='center', vertical='center')
-                    cell.fill = header_fill
-                # Freeze top row and first column
-                ws.freeze_panes = 'B2'
-                # Autofit column widths
-                for col in ws.columns:
-                    max_length = 0
-                    col_letter = get_column_letter(col[0].column)
-                    for cell in col:
-                        try:
-                            if cell.value:
-                                max_length = max(max_length, len(str(cell.value)))
-                        except:
-                            pass
-                    ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
-                # Hot and cold alternating row shading
-                fill1 = PatternFill(start_color='FFE5D9', end_color='FFE5D9', fill_type='solid')  # Warm coral (hot)
-                fill2 = PatternFill(start_color='E3F0FF', end_color='E3F0FF', fill_type='solid')  # Cool blue (cold)
-                for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
-                    fill = fill1 if i % 2 == 0 else fill2
-                    for cell in row:
-                        cell.fill = fill
-                # Add gridlines (borders) to all cells
-                thin = Side(border_style="thin", color="BBBBBB")
-                border = Border(left=thin, right=thin, top=thin, bottom=thin)
-                for row in ws.iter_rows():
-                    for cell in row:
-                        cell.border = border
-                # After writing all summary blocks to the Summary sheet, apply cell merging for improved demographics formatting
-                # Find the start row of the demographics table
-                demo_header = "Patient Demographics"
-                demo_start = None
-                for row in ws.iter_rows():
-                    if row[0].value == demo_header:
-                        demo_start = row[0].row
-                        break
-                # Note: demo_table formatting removed as it's no longer used in the new Summary structure
-        # Basic formatting for MDR_Texts (light gray header, gray text, subtle stripes)
-        if 'MDR_Texts' in wb.sheetnames:
-            ws = wb['MDR_Texts']
-            header_fill = PatternFill(start_color='E0E0E0', end_color='E0E0E0', fill_type='solid')
-            header_font = Font(bold=True, name='Calibri', size=12, color='333333')
+        # Premium formatting for Custom_Events sheet (the "golden sheet")
+        if 'Custom_Events' in wb.sheetnames:
+            ws = wb['Custom_Events']
+            
+            # Professional dark blue header (#2C3E50)
+            header_fill = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
+            header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
+            
+            # Apply premium header formatting
             for cell in ws[1]:
                 cell.font = header_font
                 cell.alignment = Alignment(horizontal='center', vertical='center')
                 cell.fill = header_fill
+            
+            # Freeze panes for better navigation
             ws.freeze_panes = 'B2'
+            
+            # Smart column width optimization with text wrapping
+            for col in ws.columns:
+                max_length = 0
+                col_letter = get_column_letter(col[0].column)
+                col_name = col[0].value
+                
+                # Check all cells in the column for content length (excluding header since it wraps)
+                for cell in col[1:]:  # Skip header row
+                    try:
+                        if cell.value:
+                            cell_length = len(str(cell.value))
+                            max_length = max(max_length, cell_length)
+                    except:
+                        pass
+                
+                # Set optimal width based on content type (recommended best practices)
+                if col_name and any(date_word in col_name.lower() for date_word in ['date', 'received']):
+                    # Date columns: 14px width (optimal for MM/DD/YYYY format)
+                    ws.column_dimensions[col_letter].width = 14
+                elif col_name and any(link_word in col_name.lower() for link_word in ['link', 'url']):
+                    # Link columns: 30px width (shows URL structure)
+                    ws.column_dimensions[col_letter].width = 30
+                elif col_name and any(text_word in col_name.lower() for text_word in ['text', 'description', 'problems', 'outcome', 'treatment']):
+                    # Long text columns: 25px width (for detailed content)
+                    ws.column_dimensions[col_letter].width = 25
+                elif col_name and any(id_word in col_name.lower() for id_word in ['id', 'key', 'number']):
+                    # ID/Key columns: 15px width (perfect for identifiers)
+                    ws.column_dimensions[col_letter].width = 15
+                elif col_name and any(flag_word in col_name.lower() for flag_word in ['flag']):
+                    # Flag columns: 16px width (good for short categorical data)
+                    ws.column_dimensions[col_letter].width = 16
+                else:
+                    # Standard columns: 20px width (optimal for medium text)
+                    ws.column_dimensions[col_letter].width = 20
+            
+            # Professional alternating row colors (subtle gray and white)
+            fill1 = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')  # Light gray
+            fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')  # White
+            
+            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+                fill = fill1 if i % 2 == 0 else fill2
+                for cell in row:
+                    cell.fill = fill
+            
+            # Clean, professional borders
+            thin = Side(border_style="thin", color="E0E0E0")
+            border = Border(left=thin, right=thin, top=thin, bottom=thin)
+            
+            for row in ws.iter_rows():
+                for cell in row:
+                    cell.border = border
+        
+        # Standard formatting for Summary sheet
+        if 'Summary' in wb.sheetnames:
+            ws = wb['Summary']
+            # Bold, white font on colored header
+            header_fill = PatternFill(start_color='34495E', end_color='34495E', fill_type='solid')
+            header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
+            for cell in ws[1]:
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.fill = header_fill
+            # Freeze top row and first column
+            ws.freeze_panes = 'B2'
+            # Autofit column widths
             for col in ws.columns:
                 max_length = 0
                 col_letter = get_column_letter(col[0].column)
@@ -893,6 +1009,70 @@ def export_to_excel():
                     except:
                         pass
                 ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
+            # Hot and cold alternating row shading
+            fill1 = PatternFill(start_color='FFE5D9', end_color='FFE5D9', fill_type='solid')  # Warm coral (hot)
+            fill2 = PatternFill(start_color='E3F0FF', end_color='E3F0FF', fill_type='solid')  # Cool blue (cold)
+            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+                fill = fill1 if i % 2 == 0 else fill2
+                for cell in row:
+                    cell.fill = fill
+            # Add gridlines (borders) to all cells
+            thin = Side(border_style="thin", color="BBBBBB")
+            border = Border(left=thin, right=thin, top=thin, bottom=thin)
+            for row in ws.iter_rows():
+                for cell in row:
+                    cell.border = border
+                # After writing all summary blocks to the Summary sheet, apply cell merging for improved demographics formatting
+                # Find the start row of the demographics table
+                demo_header = "Patient Demographics"
+                demo_start = None
+                for row in ws.iter_rows():
+                    if row[0].value == demo_header:
+                        demo_start = row[0].row
+                        break
+                # Note: demo_table formatting removed as it's no longer used in the new Summary structure
+        # Optimized formatting for MDR_Texts sheet
+        if 'MDR_Texts' in wb.sheetnames:
+            ws = wb['MDR_Texts']
+            header_fill = PatternFill(start_color='E0E0E0', end_color='E0E0E0', fill_type='solid')
+            header_font = Font(bold=True, name='Calibri', size=12, color='333333')
+            for cell in ws[1]:
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.fill = header_fill
+            ws.freeze_panes = 'B2'
+            
+            # Optimized column widths for MDR_Texts
+            for col in ws.columns:
+                col_letter = get_column_letter(col[0].column)
+                col_name = col[0].value
+                
+                # Smart width based on column content type
+                if col_name and 'event_id' in col_name.lower():
+                    # Event ID: 12px width (compact for IDs)
+                    ws.column_dimensions[col_letter].width = 12
+                elif col_name and 'text_type_code' in col_name.lower():
+                    # Text Type Code: 15px width (short codes)
+                    ws.column_dimensions[col_letter].width = 15
+                elif col_name and 'mdr_report_key' in col_name.lower():
+                    # MDR Report Key: 18px width (medium length keys)
+                    ws.column_dimensions[col_letter].width = 18
+                elif col_name and 'maude_report_link' in col_name.lower():
+                    # MAUDE Report Link: 35px width (URLs need more space)
+                    ws.column_dimensions[col_letter].width = 35
+                elif col_name and 'text' in col_name.lower():
+                    # Text content: 50px width (long text content)
+                    ws.column_dimensions[col_letter].width = 50
+                else:
+                    # Default: calculate optimal width
+                    max_length = 0
+                    for cell in col:
+                        try:
+                            if cell.value:
+                                max_length = max(max_length, len(str(cell.value)))
+                        except:
+                            pass
+                    ws.column_dimensions[col_letter].width = max(12, min(max_length + 1, 30))
             fill1 = PatternFill(start_color='F7F7F7', end_color='F7F7F7', fill_type='solid')
             fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
             for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
@@ -1045,7 +1225,7 @@ def results():
 def export_data():
     try:
         filename = export_to_excel()
-        return send_file(filename, as_attachment=True, download_name=filename)
+        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
         return f"Error exporting data: {str(e)}", 500
 
