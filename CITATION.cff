@@ -6,7 +6,7 @@ authors:
     orcid: "0000-0001-7480-371X"
 title: "MAUDEMetrics: A Web-Based Tool for Automated Extraction and Analysis of FDA MAUDE Device Reports"
 version: "1.0.0"
-doi: "10.21105/joss.XXXXX"  # Will be assigned by JOSS
+doi: "10.5281/zenodo.16691961"
 date-released: 2025-08-01
 url: "https://github.com/MohamedMaroufMD/MAUDEMetrics"
 repository-code: "https://github.com/MohamedMaroufMD/MAUDEMetrics"
