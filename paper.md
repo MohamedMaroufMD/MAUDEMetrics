@@ -47,7 +47,7 @@ Medical device safety analysis is essential for patient safety and regulatory co
 
 1. **Accessible Interface**: A web-based application that eliminates the need for programming knowledge, making MAUDE data accessible to non-technical users
 2. **Automated Data Extraction**: Intelligent pagination handling that aggregates complete datasets across multiple API requests
-3. **Multi-Parameter Search**: Support for complex queries across brand names, product codes, manufacturers, device types, and date ranges
+3. **Multi-Parameter Search**: Support for complex queries across brand names, product codes, manufacturers, product class, and date ranges
 4. **Structured Data Processing**: Automated cleaning, validation, and standardization of FDA data fields
 5. **Professional Reporting**: Multi-sheet exports with raw data, narrative reports, processed analytics, and summary statistics
 6. **Interactive Analytics**: Built-in visualization dashboard for event type analysis, patient demographics, and manufacturer statistics
@@ -100,7 +100,7 @@ Built-in visualization capabilities include:
 - Event type distribution analysis
 - Patient demographic breakdowns
 - Manufacturer and country analysis
-- Device type frequency analysis
+- Product class frequency analysis
 - Product problem categorization
 
 ## Deployment Architecture
@@ -136,7 +136,7 @@ MAUDEMetrics has been designed to handle large-scale data extraction scenarios w
 
 ## Technical Capabilities
 - **Scalable Data Extraction**: Built-in pagination handling that can process datasets containing 10,000+ records through automated API iteration
-- **Multi-Parameter Search**: Support for complex queries across brand names, product codes, manufacturers, device types, and date ranges
+- **Multi-Parameter Search**: Support for complex queries across brand names, product codes, manufacturers, product class, and date ranges
 - **Comprehensive Data Processing**: Automated processing of over 100 FDA data fields including event metadata, device information, patient demographics, and narrative reports
 - **Professional Export System**: Multi-sheet exports with raw data, narrative reports, processed analytics, and summary statistics
 

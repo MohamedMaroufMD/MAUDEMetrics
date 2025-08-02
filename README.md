@@ -41,7 +41,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Brand Name Search:** Partial matching with case-insensitive search
 - **Product Code Search:** FDA product codes (e.g., MAF, KYF, MND)
 - **Manufacturer Search:** Company names with flexible matching
-- **Device Type Search:** Generic device names (e.g., pacemaker, stent)
+- **Product Class Search:** Generic device names (e.g., pacemaker, stent)
 - **Date Range Filtering:** Flexible start/end date selection
 - **Multiple Values:** Separate multiple entries with commas
 - **Cumulative Results:** Build comprehensive datasets across searches
@@ -50,7 +50,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Event Type Analysis:** Distribution of adverse events
 - **Patient Demographics:** Age, sex, ethnicity, and race breakdowns
 - **Manufacturer Analysis:** Top manufacturers and countries
-- **Device Type Analysis:** Most common device types
+- **Product Class Analysis:** Most common device types
 - **Product Problem Analysis:** Categorized device issues
 - **Interactive Chart:** Visualize event types per brand name with modern multi-select filters (checkboxes and search) for Brand Name and Event Type, powered by Choices.js
 
