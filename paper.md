@@ -177,6 +177,12 @@ For manual installation, the software requires Python 3.11+ and can be installed
 
 The development of MAUDEMetrics was supported by the openFDA API initiative, which provides public access to FDA data. The project builds upon open-source technologies including Flask, Pandas, and Bootstrap, and benefits from the medical device safety research community's feedback and validation.
 
+# Software Availability
+
+MAUDEMetrics is available under the Apache License 2.0 and can be accessed at:
+- **GitHub Repository**: https://github.com/MohamedMaroufMD/MAUDEMetrics
+- **DOI**: [10.5281/zenodo.16691960](https://doi.org/10.5281/zenodo.16691960)
+
 # References
 
 1. U.S. Food and Drug Administration. (2024). Manufacturer and User Facility Device Experience (MAUDE). https://www.fda.gov/medical-devices/postmarket-requirements-devices/mandatory-reporting-requirements-manufacturers-importers-and-device-user-facilities
