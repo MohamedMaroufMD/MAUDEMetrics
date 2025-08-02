@@ -5,7 +5,7 @@ MAUDEMetrics is a Python-based, Docker-compatible web application that democrati
 ## 🚀 Key Features
 
 - **Automated Data Extraction**: Built-in pagination handling for datasets up to 10,000+ records
-- **Multi-Parameter Search**: Support for complex queries across brand names, product codes, manufacturers, device types, and date ranges
+- **Multi-Parameter Search**: Support for complex queries across brand names, product codes, manufacturers, product class, and date ranges
 - **Professional Export System**: Multi-sheet exports with raw data, narrative reports, processed analytics, and summary statistics
 - **Interactive Analytics Dashboard**: Built-in visualization capabilities for event analysis
 - **Docker Containerization**: Complete containerization for reproducible deployment
@@ -78,7 +78,7 @@ The application will be available at `http://localhost:5005`
 - Brand name search with phrase matching
 - Product code search with wildcard support
 - Manufacturer search with partial matching
-- Device type search with FDA naming variations
+- Product class search with FDA naming variations
 - Date range filtering
 
 ### Export Features
