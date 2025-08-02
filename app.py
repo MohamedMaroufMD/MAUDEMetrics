@@ -564,8 +564,8 @@ def export_to_excel():
                             'device_date_received': 'Device Date Received',
                             'device_expiration_date_of_device': 'Device Expiration Date',
                             'patient_date_received': 'Patient Date Received',
-                            'device_generic_name': 'Device Type',
-                            'device_brand_name': 'Device Brand Name',
+                            'device_generic_name': 'Product Class',
+                            'device_brand_name': 'Brand Name',
                             'device_manufacturer_d_name': 'Manufacturer',
                             'device_device_report_product_code': 'Product Code',
                             'device_model_number': 'Model Number',
@@ -625,7 +625,7 @@ def export_to_excel():
                     base_priority_order = [
                         'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
                         'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
-                        'Device Type', 'Device Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
+                        'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
                         'Adverse Event Flag', 'Product Problem Flag', 'Product Problems', 'Patient Problems', 'Patient Outcome', 'Patient Treatment'
                     ]
                     
@@ -771,12 +771,12 @@ def export_to_excel():
                     ('report_source_code', 'Report Source Code'),
                     ('source_type', 'Source Type'),
                     ('reporter_occupation_code', 'Reporter Occupation Code'),
-                    ('device_device_report_product_code', 'Device Product Code'),
-                    ('device_model_number', 'Device Model Number'),
-                    ('device_manufacturer_d_name', 'Device Manufacturer'),
+                    ('device_device_report_product_code', 'Product Code'),
+                    ('device_model_number', 'Model Number'),
+                    ('device_manufacturer_d_name', 'Manufacturer'),
                     ('device_manufacturer_d_country', 'Manufacturer Country'),
                     ('device_brand_name', 'Brand Name'),
-                    ('device_generic_name', 'Type of Device')
+                    ('device_generic_name', 'Product Class')
                 ]
                 for field, label in event_fields:
                     cols = [c for c in events_flat_df.columns if c.startswith(field)]
@@ -1405,13 +1405,13 @@ def analytics():
         report_source_table = make_table(df, 'report_source_code', 'Report Source')
         source_type_table = make_table(df, 'source_type', 'Source Type')
         occupation_table = make_table(df, 'reporter_occupation_code', 'Reporter Occupation Code')
-        product_code_table = make_table(df, 'device_device_report_product_code', 'Device Product Code')
-        model_number_table = make_table(df, 'device_model_number', 'Device Model Number')
-        manufacturer_table = make_table(df, 'device_manufacturer_d_name', 'Device Manufacturer')
+        product_code_table = make_table(df, 'device_device_report_product_code', 'Product Code')
+        model_number_table = make_table(df, 'device_model_number', 'Model Number')
+        manufacturer_table = make_table(df, 'device_manufacturer_d_name', 'Manufacturer')
         manufacturer_country_table = make_table(df, 'device_manufacturer_d_country', 'Manufacturer Country')
         brand_name_table = make_table(df, 'device_brand_name', 'Brand Name')
         # Type of Device (Generic Name)
-        generic_name_table = make_table(df, 'device_generic_name', 'Type of Device')
+        generic_name_table = make_table(df, 'device_generic_name', 'Product Class')
         # Product Problems
         prod_cols = [c for c in df.columns if c.startswith('product_problems')]
         prod_vals = pd.Series(df[prod_cols].values.flatten()).dropna()
