@@ -562,7 +562,7 @@ def export_to_excel():
                             'date_received': 'Date Received',
                             'date_manufacturer_received': 'Date Manufacturer Received',
                             'device_date_received': 'Device Date Received',
-                            'device_expiration_date_of_device': 'Device Expiration Date Of Device',
+                            'device_expiration_date_of_device': 'Device Expiration Date',
                             'patient_date_received': 'Patient Date Received',
                             'device_generic_name': 'Device Type',
                             'device_brand_name': 'Device Brand Name',
@@ -592,7 +592,7 @@ def export_to_excel():
                             'patient_sequence_number_treatment': 'Patient Treatment',
                             'product_problem_flag': 'Product Problem Flag',
                             'product_problems': 'Product Problems',
-                            'date_report_to_fda': 'Date Report To Fda',
+                            'date_report_to_fda': 'Date Report To FDA',
                             'date_report_to_manufacturer': 'Date Report To Manufacturer'
                         }
                         if col in field_mapping:
@@ -603,33 +603,46 @@ def export_to_excel():
                             number = col.rsplit('_', 1)[1]
                             if base_field in field_mapping:
                                 return f"{field_mapping[base_field]} {number}"
-                            # Handle special cases for nested array fields
+                            # Handle special cases for nested array fields - clean up the naming
                             elif base_field.endswith('_1') and base_field[:-2] in field_mapping:
                                 base_base_field = base_field[:-2]
-                                return f"{field_mapping[base_base_field]} 1 {number}"
+                                # Clean up nested array naming (e.g., "Patient Patient Problems 1 1" -> "Patient Problems 1")
+                                if base_base_field == 'patient_patient_problems':
+                                    return f"Patient Problems {number}"
+                                elif base_base_field == 'patient_sequence_number_outcome':
+                                    return f"Patient Outcome {number}"
+                                elif base_base_field == 'patient_sequence_number_treatment':
+                                    return f"Patient Treatment {number}"
+                                else:
+                                    return f"{field_mapping[base_base_field]} {number}"
                         return col.replace('_', ' ').replace('.', ' ').title()
                     
                     # Apply enhanced column naming
                     main_fields_df.columns = [enhanced_humanize(c) for c in main_fields_df.columns]
                     
                     # Intelligent column reordering for Custom_Events sheet
-                    priority_columns = [
-                        'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link',
-                        'Event Date', 'Report Date', 'Date Received', 'Event Type',
-                        'Product Problems', 'Adverse Event Flag', 'Product Problem Flag',
-                        'Date Report To Fda', 'Date Report To Manufacturer', 'Date Manufacturer Received',
-                        'Device Date Received 1', 'Device Expiration Date Of Device 1', 'Patient Date Received 1',
-                        'Device Type 1', 'Device Brand Name 1', 'Manufacturer 1',
-                        'Product Code 1', 'Model Number 1', 'Lot Number 1',
-                        'Device Availability 1', 'Device Evaluated By Manufacturer 1',
-                        'Manufacturer Country 1', 'Single Use Flag', 'Reprocessed And Reused Flag',
-                        'Device Operator 1', 'Report Source Code', 'Health Professional',
-                        'Reporter Occupation Code', 'Source Type', 'Source Type 1', 'Source Type 2',
-                        'Source Type 3', 'Source Type 4', 'Source Type 5', 'Patient Age 1',
-                        'Patient Sex 1', 'Patient Weight 1', 'Patient Ethnicity 1', 'Patient Race 1',
-                        'Patient Problems 1', 'Patient Patient Problems 1 1', 'Patient Patient Problems 1 2',
-                        'Patient Patient Problems 1 3', 'Patient Patient Problems 1 4'
+                    # Define base priority order (without array numbers)
+                    base_priority_order = [
+                        'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
+                        'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
+                        'Device Type', 'Device Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
+                        'Adverse Event Flag', 'Product Problem Flag', 'Product Problems', 'Patient Problems', 'Patient Outcome', 'Patient Treatment'
                     ]
+                    
+                    # Build complete priority columns maintaining original position order
+                    priority_columns = []
+                    for base_field in base_priority_order:
+                        # Add the base field first (if it exists in the dataframe)
+                        if base_field in main_fields_df.columns:
+                            priority_columns.append(base_field)
+                        
+                        # Add all numbered variations of this field in sequence
+                        for i in range(1, 10):  # Support up to 9 array elements
+                            numbered_field = f"{base_field} {i}"
+                            if numbered_field in main_fields_df.columns:
+                                priority_columns.append(numbered_field)
+                        
+                        # Continue to next base field (arrays maintain their position in sequence)
                     
                     # Reorder columns: priority columns first, then others
                     available_priority_cols = [col for col in priority_columns if col in main_fields_df.columns]
