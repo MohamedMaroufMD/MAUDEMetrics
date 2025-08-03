@@ -455,6 +455,153 @@ def export_to_excel():
             )
         return df
 
+    def translate_fda_codes(df):
+        """Translate FDA codes to human-readable text for user-friendly display"""
+        
+        # Patient Outcome Codes (based on actual data analysis)
+        outcome_mapping = {
+            'R': 'Required Intervention',
+            'O': 'Other',
+            'H': 'Hospitalization',
+            'D': 'Death',
+            'L': 'Life Threatening',
+            'I': 'Injury',
+            'M': 'Malfunction',
+            'N': 'No Information',
+            'U': 'Unknown',
+            'S': 'Disability'
+        }
+        
+        # Device Evaluated by Manufacturer Codes (based on actual data)
+        device_evaluated_mapping = {
+            'R': 'Returned to Manufacturer',
+            'Y': 'Yes',
+            'N': 'No',
+            'I': 'Invalid/Incomplete',
+            '*': 'Not Available'
+        }
+        
+        # Reporter Occupation Codes (based on actual data)
+        occupation_mapping = {
+            '501': 'Administrator/Supervisor',
+            '003': 'Non-Healthcare Professional',
+            '117': 'Nurse Practitioner',
+            '2': 'Nurse',
+            'PHYSICIAN': 'Physician',
+            'NURSE': 'Nurse',
+            'OTHER': 'Other',
+            'OTHER HEALTH CARE PROFESSIONAL': 'Other Health Care Professional',
+            'RISK MANAGER': 'Risk Manager',
+            'PATIENT': 'Patient',
+            'ATTORNEY': 'Attorney',
+            'PATIENT FAMILY MEMBER OR FRIEND': 'Patient Family Member or Friend',
+            'UNKNOWN': 'Unknown'
+        }
+        
+        # Previous Use Codes (based on actual data)
+        previous_use_mapping = {
+            'I': 'Invalid/Incomplete',
+            'N': 'No',
+            'U': 'Unknown',
+            '*': 'Not Available'
+        }
+        
+        # Report to FDA Codes (based on actual data)
+        report_to_fda_mapping = {
+            'Y': 'Yes',
+            'N': 'No',
+            'I': 'Invalid/Incomplete',
+            '*': 'Not Available'
+        }
+        
+        # Health Professional Codes (based on actual data)
+        health_prof_mapping = {
+            'Y': 'Yes',
+            'N': 'No',
+            'I': 'Invalid/Incomplete',
+            '*': 'Not Available'
+        }
+        
+        # Single Use Flag (based on actual data)
+        single_use_mapping = {
+            'Y': 'Yes',
+            'N': 'No',
+            'I': 'Invalid/Incomplete',
+            '*': 'Not Available'
+        }
+        
+        # Reprocessed Flag (based on actual data)
+        reprocessed_mapping = {
+            'N': 'No',
+            'I': 'Invalid/Incomplete'
+        }
+        
+        # Adverse Event Flag (based on actual data)
+        adverse_event_mapping = {
+            'Y': 'Yes',
+            'N': 'No'
+        }
+        
+        # Product Problem Flag (based on actual data)
+        product_problem_mapping = {
+            'Y': 'Yes',
+            'N': 'No',
+            '*': 'Not Available'
+        }
+        
+        # Device Operator Codes (based on actual data)
+        device_operator_mapping = {
+            'I': 'No Information',
+            '0': 'Other',
+            'HEALTH PROFESSIONAL': 'Health Professional',
+            'LAY USER/PATIENT': 'Lay User/Patient',
+            'INVALID DATA': 'Invalid Data',
+            'PHYSICIAN': 'Physician',
+            'OTHER': 'Other'
+        }
+        
+        # Apply translations to relevant columns
+        for col in df.columns:
+            if 'Patient Outcome' in col:
+                # Handle semicolon-separated codes for Patient Outcome
+                def translate_outcome_codes(value):
+                    if pd.isna(value) or value == '':
+                        return value
+                    if isinstance(value, str):
+                        # Split by semicolon and translate each code
+                        codes = [code.strip() for code in value.split(';')]
+                        translated_codes = []
+                        for code in codes:
+                            if code in outcome_mapping:
+                                translated_codes.append(outcome_mapping[code])
+                            else:
+                                translated_codes.append(code)  # Keep original if not in mapping
+                        return '; '.join(translated_codes)
+                    return value
+                df[col] = df[col].apply(translate_outcome_codes)
+            elif 'Device Evaluated By Manufacturer' in col:
+                df[col] = df[col].map(device_evaluated_mapping).fillna(df[col])
+            elif 'Reporter Occupation Code' in col:
+                df[col] = df[col].map(occupation_mapping).fillna(df[col])
+            elif 'Previous Use Code' in col:
+                df[col] = df[col].map(previous_use_mapping).fillna(df[col])
+            elif 'Report To FDA' in col:
+                df[col] = df[col].map(report_to_fda_mapping).fillna(df[col])
+            elif 'Health Professional' in col:
+                df[col] = df[col].map(health_prof_mapping).fillna(df[col])
+            elif 'Single Use Flag' in col:
+                df[col] = df[col].map(single_use_mapping).fillna(df[col])
+            elif 'Reprocessed And Reused Flag' in col:
+                df[col] = df[col].map(reprocessed_mapping).fillna(df[col])
+            elif 'Adverse Event Flag' in col:
+                df[col] = df[col].map(adverse_event_mapping).fillna(df[col])
+            elif 'Product Problem Flag' in col:
+                df[col] = df[col].map(product_problem_mapping).fillna(df[col])
+            elif 'Device Operator' in col:
+                df[col] = df[col].map(device_operator_mapping).fillna(df[col])
+        
+        return df
+
     with get_db_connection() as conn:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
         filename = f'MAUDEMetrics_{timestamp}.xlsx'
@@ -651,6 +798,25 @@ def export_to_excel():
                     
                     # Apply reordering
                     main_fields_df = main_fields_df[reordered_cols]
+                    
+                    # Temporarily analyze codes to find correct mappings
+                    def analyze_fda_codes(df):
+                        """Analyze what FDA codes are in the data"""
+                        print("=== FDA CODE ANALYSIS ===")
+                        for col in df.columns:
+                            if any(keyword in col for keyword in ['Outcome', 'Sex', 'Type', 'Flag', 'Professional', 'Availability']):
+                                unique_values = df[col].dropna().unique()
+                                if len(unique_values) > 0:
+                                    print(f"\n{col}:")
+                                    for val in sorted(unique_values):
+                                        print(f"  '{val}'")
+                        print("=== END ANALYSIS ===")
+                    
+                    # Run analysis (temporarily)
+                    analyze_fda_codes(main_fields_df)
+                    
+                    # Apply FDA code translation for user-friendly display
+                    main_fields_df = translate_fda_codes(main_fields_df)
                     
                     main_fields_df.to_excel(writer, sheet_name='Custom_Events', index=False)
                 # 2. MDR TEXTS - Add event_id, mdr_report_key, and maude_report_link (link only for first row per event_id)
