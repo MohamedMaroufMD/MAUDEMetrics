@@ -560,6 +560,22 @@ def export_to_excel():
             'OTHER': 'Other'
         }
         
+        # Event Location Codes (based on actual data)
+        event_location_mapping = {
+            'Y': 'Yes',
+            'N': 'No',
+            'I': 'Invalid/Incomplete',
+            '*': 'Not Available'
+        }
+        
+        # Manufacturer Link Flag Codes (based on actual data)
+        manufacturer_link_flag_mapping = {
+            'Y': 'Yes',
+            'N': 'No',
+            'I': 'Invalid/Incomplete',
+            '*': 'Not Available'
+        }
+        
         # Apply translations to relevant columns
         for col in df.columns:
             if 'Patient Outcome' in col:
@@ -599,6 +615,10 @@ def export_to_excel():
                 df[col] = df[col].map(product_problem_mapping).fillna(df[col])
             elif 'Device Operator' in col:
                 df[col] = df[col].map(device_operator_mapping).fillna(df[col])
+            elif 'Event Location' in col:
+                df[col] = df[col].map(event_location_mapping).fillna(df[col])
+            elif 'Manufacturer Link Flag' in col:
+                df[col] = df[col].map(manufacturer_link_flag_mapping).fillna(df[col])
         
         return df
 
