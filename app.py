@@ -379,7 +379,7 @@ def extract_event_fields(event, field_list, event_id=None):
     result['maude_report_link'] = maude_link
     return result
 
-def export_to_excel():
+def export_to_excel(include_raw_events=True):
     import pandas as pd
     import json
     import os
@@ -681,7 +681,13 @@ def export_to_excel():
                     # Add any extra columns
                     extra_cols = [col for col in events_flat_df.columns if col not in ordered_cols]
                     events_flat_df = events_flat_df[ordered_cols + extra_cols]
-                    events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
+                    
+                    # Only write Raw_Events sheet if requested
+                    if include_raw_events:
+                        print("Writing Raw_Events sheet to Excel...")
+                        events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
+                    else:
+                        print("Skipping Raw_Events sheet for better performance...")
                     # --- Restore main_fields_df construction ---
                     main_fields_cols = []
                     for field in main_fields:
@@ -732,6 +738,7 @@ def export_to_excel():
                             'device_manufacturer_d_name': 'Manufacturer',
                             'device_device_report_product_code': 'Product Code',
                             'device_model_number': 'Model Number',
+                            'device_catalog_number': 'Catalog Number',
                             'device_lot_number': 'Lot Number',
                             'device_device_availability': 'Device Availability',
                             'device_device_evaluated_by_manufacturer': 'Device Evaluated By Manufacturer',
@@ -788,7 +795,7 @@ def export_to_excel():
                     base_priority_order = [
                         'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
                         'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
-                        'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
+                        'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Catalog Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
                         'Adverse Event Flag', 'Product Problem Flag', 'Product Problems', 'Patient Problems', 'Patient Outcome', 'Patient Treatment'
                     ]
                     
@@ -800,10 +807,18 @@ def export_to_excel():
                             priority_columns.append(base_field)
                         
                         # Add all numbered variations of this field in sequence
-                        for i in range(1, 10):  # Support up to 9 array elements
+                        for i in range(1, 50):  # Support up to 49 array elements
                             numbered_field = f"{base_field} {i}"
                             if numbered_field in main_fields_df.columns:
                                 priority_columns.append(numbered_field)
+                        
+                        # Handle nested array fields (e.g., "Patient Problems 1 1", "Patient Problems 1 2", etc.)
+                        # These come from nested structures like patient.patient_problems
+                        for i in range(1, 50):  # First level array
+                            for j in range(1, 50):  # Second level array
+                                nested_field = f"{base_field} {i} {j}"
+                                if nested_field in main_fields_df.columns:
+                                    priority_columns.append(nested_field)
                         
                         # Continue to next base field (arrays maintain their position in sequence)
                     
@@ -834,7 +849,7 @@ def export_to_excel():
                     # Apply FDA code translation for user-friendly display
                     main_fields_df = translate_fda_codes(main_fields_df)
                     
-                    main_fields_df.to_excel(writer, sheet_name='Custom_Events', index=False)
+                    main_fields_df.to_excel(writer, sheet_name='Events', index=False)
                 # 2. MDR TEXTS - Add event_id, mdr_report_key, and maude_report_link (link only for first row per event_id)
                 mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
                 mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
@@ -1094,30 +1109,29 @@ def export_to_excel():
         from openpyxl.utils import get_column_letter
         wb = load_workbook(filename)
         # Ensure all main sheets are visible
-        for sheet_name in ['Raw_Events', 'MDR_Texts', 'Custom_Events', 'Summary']:
+        for sheet_name in ['Events', 'MDR_Texts', 'Summary']:
             if sheet_name in wb.sheetnames:
                 wb[sheet_name].sheet_state = 'visible'
         # Reorder sheets using openpyxl's move_sheet
-        desired_order = ['Raw_Events', 'MDR_Texts', 'Custom_Events', 'Summary']
+        desired_order = ['Events', 'MDR_Texts', 'Summary']
         for idx, sheet_name in enumerate(desired_order):
             if sheet_name in wb.sheetnames:
                 wb.move_sheet(wb[sheet_name], offset=idx - wb.sheetnames.index(sheet_name))
         # Color sheet tabs
         tab_colors = {
-            'Raw_Events': '1072BA',    # Blue
+            'Events': '1072BA',       # Blue
             'MDR_Texts': 'E67E22',    # Orange
-            'Custom_Events': '27AE60',# Green
-            'Summary': '8E44AD'       # Purple
+            'Summary': '27AE60'       # Green
         }
         for sheet_name, color in tab_colors.items():
             if sheet_name in wb.sheetnames:
                 wb[sheet_name].sheet_properties.tabColor = color
-        # Premium formatting for Custom_Events sheet (the "golden sheet")
-        if 'Custom_Events' in wb.sheetnames:
-            ws = wb['Custom_Events']
+        # Premium formatting for Events sheet (the "golden sheet")
+        if 'Events' in wb.sheetnames:
+            ws = wb['Events']
             
-            # Professional dark blue header (#2C3E50)
-            header_fill = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
+            # Professional blue header (#1072BA)
+            header_fill = PatternFill(start_color='1072BA', end_color='1072BA', fill_type='solid')
             header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
             
             # Apply premium header formatting
@@ -1280,6 +1294,15 @@ def export_to_excel():
                 for cell in row:
                     cell.border = border
         wb.save(filename)
+        
+        # Memory cleanup after all processing is complete
+        if 'events_flat_df' in locals():
+            del events_flat_df
+        if 'main_fields_df' in locals():
+            del main_fields_df
+        import gc
+        gc.collect()
+        
         return filename
 
 @app.route('/', methods=['GET', 'POST'])
@@ -1419,7 +1442,7 @@ def results():
 @app.route('/export')
 def export_data():
     try:
-        filename = export_to_excel()
+        filename = export_to_excel(include_raw_events=False)
         return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
         return f"Error exporting data: {str(e)}", 500
