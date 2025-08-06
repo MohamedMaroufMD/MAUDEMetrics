@@ -52,7 +52,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Patient Demographics:** Age, sex, ethnicity, and race breakdowns
 - **Manufacturer Analysis:** Top manufacturers and countries
 - **Product Class Analysis:** Most common device types
-- **Product Problem Analysis:** Categorized device issues
+- **Device Problem Analysis:** Categorized device issues
 - **Interactive Chart:** Visualize event types per brand name with modern multi-select filters (checkboxes and search) for Brand Name and Event Type, powered by Choices.js
 
 ### 📈 Data Export & Reporting
@@ -162,7 +162,7 @@ Then visit [http://localhost:5005](http://localhost:5005) in your browser.
 - **Raw_Events Sheet:** Complete event data with all FDA fields
 - **MDR_Texts Sheet:** Narrative reports and problem descriptions
 - **Custom_Events Sheet:** Processed data with consistent formatting
-- **Summary Sheet:** Patient demographics, event types, and product problems
+- **Summary Sheet:** Patient demographics, event types, and device problems
 
 ### Data Formatting
 - **Consistent Date Format:** All dates formatted as mm/dd/yyyy

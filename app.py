@@ -129,6 +129,7 @@ def init_db():
                 text_type_code TEXT,
                 patient_sequence_number TEXT,
                 text TEXT,
+                mdr_text_key TEXT,
                 FOREIGN KEY (event_id) REFERENCES events (id)
             )
         ''')
@@ -275,13 +276,14 @@ def save_comprehensive_data(data):
             for mdr_text in mdr_texts:
                 conn.execute('''
                     INSERT INTO mdr_texts (
-                        event_id, text_type_code, patient_sequence_number, text
-                    ) VALUES (?, ?, ?, ?)
+                        event_id, text_type_code, patient_sequence_number, text, mdr_text_key
+                    ) VALUES (?, ?, ?, ?, ?)
                 ''', (
                     event_id,
                     mdr_text.get('text_type_code'),
                     mdr_text.get('patient_sequence_number'),
-                    mdr_text.get('text')
+                    mdr_text.get('text'),
+                    mdr_text.get('mdr_text_key', '')
                 ))
         
         conn.commit()
@@ -757,11 +759,11 @@ def export_to_excel(include_raw_events=True):
                             'patient_patient_race': 'Patient Race',
                             'event_type': 'Event Type',
                             'adverse_event_flag': 'Adverse Event Flag',
-                            'patient_patient_problems': 'Patient Problems',
+                            'patient_patient_problems': 'Patient Problem',
                             'patient_sequence_number_outcome': 'Patient Outcome',
                             'patient_sequence_number_treatment': 'Patient Treatment',
                             'product_problem_flag': 'Product Problem Flag',
-                            'product_problems': 'Product Problems',
+                            'product_problems': 'Device Problem',
                             'date_report_to_fda': 'Date Report To FDA',
                             'date_report_to_manufacturer': 'Date Report To Manufacturer'
                         }
@@ -776,9 +778,9 @@ def export_to_excel(include_raw_events=True):
                             # Handle special cases for nested array fields - clean up the naming
                             elif base_field.endswith('_1') and base_field[:-2] in field_mapping:
                                 base_base_field = base_field[:-2]
-                                # Clean up nested array naming (e.g., "Patient Patient Problems 1 1" -> "Patient Problems 1")
+                                # Clean up nested array naming (e.g., "Patient Patient Problems 1 1" -> "Patient Problem 1")
                                 if base_base_field == 'patient_patient_problems':
-                                    return f"Patient Problems {number}"
+                                    return f"Patient Problem {number}"
                                 elif base_base_field == 'patient_sequence_number_outcome':
                                     return f"Patient Outcome {number}"
                                 elif base_base_field == 'patient_sequence_number_treatment':
@@ -796,7 +798,7 @@ def export_to_excel(include_raw_events=True):
                         'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
                         'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
                         'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Catalog Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
-                        'Adverse Event Flag', 'Product Problem Flag', 'Product Problems', 'Patient Problems', 'Patient Outcome', 'Patient Treatment'
+                        'Adverse Event Flag', 'Product Problem Flag', 'Device Problem', 'Patient Problem', 'Patient Outcome', 'Patient Treatment'
                     ]
                     
                     # Build complete priority columns maintaining original position order
@@ -830,21 +832,7 @@ def export_to_excel(include_raw_events=True):
                     # Apply reordering
                     main_fields_df = main_fields_df[reordered_cols]
                     
-                    # Temporarily analyze codes to find correct mappings
-                    def analyze_fda_codes(df):
-                        """Analyze what FDA codes are in the data"""
-                        print("=== FDA CODE ANALYSIS ===")
-                        for col in df.columns:
-                            if any(keyword in col for keyword in ['Outcome', 'Sex', 'Type', 'Flag', 'Professional', 'Availability']):
-                                unique_values = df[col].dropna().unique()
-                                if len(unique_values) > 0:
-                                    print(f"\n{col}:")
-                                    for val in sorted(unique_values):
-                                        print(f"  '{val}'")
-                        print("=== END ANALYSIS ===")
-                    
-                    # Run analysis (temporarily)
-                    analyze_fda_codes(main_fields_df)
+                    # FDA Code Analysis removed for cleaner output
                     
                     # Apply FDA code translation for user-friendly display
                     main_fields_df = translate_fda_codes(main_fields_df)
@@ -878,18 +866,19 @@ def export_to_excel(include_raw_events=True):
                         event_keys[row['id']] = ''
                         event_links[row['id']] = ''
                 
-                mdr_texts_df['mdr_report_key'] = mdr_texts_df['event_id'].map(event_keys)
+                # Use mdr_text_key from the mdr_texts table instead of mdr_report_key from events
+                # The mdr_text_key column is already in the mdr_texts_df from the database query
                 
                 # OPTIMIZATION: Use vectorized operations for maude_report_link assignment
                 mdr_texts_df['maude_report_link'] = mdr_texts_df['event_id'].map(event_links)
                 mdr_texts_df = sanitize_df(mdr_texts_df)
                 mdr_texts_df = format_all_date_columns(mdr_texts_df)
                 # Reorder and filter columns for MDR_Texts sheet
-                mdr_cols = ['event_id', 'text_type_code', 'mdr_report_key', 'maude_report_link', 'text']
+                mdr_cols = ['event_id', 'maude_report_link', 'text_type_code', 'text']
                 mdr_texts_df = mdr_texts_df[[col for col in mdr_cols if col in mdr_texts_df.columns]]
                 
                 # Remove repeated values in MDR_Texts sheet (keep first occurrence, empty the rest)
-                dedup_columns = ['event_id', 'text_type_code', 'mdr_report_key', 'maude_report_link']
+                dedup_columns = ['event_id', 'maude_report_link', 'text_type_code']
                 for col in dedup_columns:
                     if col in mdr_texts_df.columns:
                         prev_value = None
@@ -987,18 +976,18 @@ def export_to_excel(include_raw_events=True):
                         event_df = pd.DataFrame(table_rows[1:], columns=table_rows[0])
                         summary_blocks.append(event_df)
                 summary_blocks.append(pd.DataFrame({'': ['']}))
-                # 4. Product Problems Table (no table header)
+                # 4. Device Problem Table (no table header)
                 prod_cols = [c for c in events_flat_df.columns if c.startswith('product_problems')]
                 prod_vals = pd.Series(events_flat_df[prod_cols].values.flatten()).dropna()
                 prod_counts = prod_vals.value_counts()
                 prod_table_start = None
                 if not prod_counts.empty:
-                    prod_df = pd.DataFrame({'Product Problem': prod_counts.index, 'Frequency': prod_counts.values})
+                    prod_df = pd.DataFrame({'Device Problem': prod_counts.index, 'Frequency': prod_counts.values})
                     prod_df['Percentage'] = prod_df['Frequency'].apply(lambda v: f"{100*v/len(prod_vals):.1f}%" if len(prod_vals) else '0%')
                     prod_table_start = len(summary_blocks)
                     summary_blocks.append(prod_df)
                     summary_blocks.append(pd.DataFrame({'': ['']}))
-                # 5. Patient Problems Table (no table header)
+                # 5. Patient Problem Table (no table header)
                 pprob_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_problems')]
                 pprob_vals = pd.Series(events_flat_df[pprob_cols].values.flatten()).dropna()
                 pprob_counts = pprob_vals.value_counts()
@@ -1048,7 +1037,7 @@ def export_to_excel(include_raw_events=True):
                                 cell.fill = PatternFill(start_color=table_colors[color_idx%len(table_colors)], end_color=table_colors[color_idx%len(table_colors)], fill_type='solid')
                                 break  # Only format first non-empty cell in row
                     color_idx += 1
-                # Add Excel bar charts for Product Problems and Patient Problems
+                # Add Excel bar charts for Device Problem and Patient Problem
                 def find_table_data_range(ws, header):
                     # Find the header row
                     for row in ws.iter_rows():
@@ -1064,13 +1053,13 @@ def export_to_excel(include_raw_events=True):
                     while ws[f'A{data_end}'].value:
                         data_end += 1
                     return data_start, data_end-1
-                # Product Problems chart
-                prod_data_start, prod_data_end = find_table_data_range(ws, "Product Problem")
+                # Device Problem chart
+                prod_data_start, prod_data_end = find_table_data_range(ws, "Device Problem")
                 if prod_data_start and prod_data_end > prod_data_start:
                     chart = BarChart()
                     chart.type = "bar"
                     chart.style = 10
-                    chart.title = "Product Problems"
+                    chart.title = "Device Problem"
                     chart.y_axis.title = "Problem"
                     chart.x_axis.title = "Frequency"
                     data = Reference(ws, min_col=2, min_row=prod_data_start, max_col=2, max_row=prod_data_end)
@@ -1080,13 +1069,13 @@ def export_to_excel(include_raw_events=True):
                     chart.shape = 4
                     chart.height = max(7, (prod_data_end-prod_data_start+1)*0.5)
                     ws.add_chart(chart, f'E{prod_data_start}')
-                # Patient Problems chart
+                # Patient Problem chart
                 pprob_data_start, pprob_data_end = find_table_data_range(ws, "Patient Problem")
                 if pprob_data_start and pprob_data_end > pprob_data_start:
                     chart = BarChart()
                     chart.type = "bar"
                     chart.style = 11
-                    chart.title = "Patient Problems"
+                    chart.title = "Patient Problem"
                     chart.y_axis.title = "Problem"
                     chart.x_axis.title = "Frequency"
                     data = Reference(ws, min_col=2, min_row=pprob_data_start, max_col=2, max_row=pprob_data_end)
@@ -1195,11 +1184,11 @@ def export_to_excel(include_raw_events=True):
                 for cell in row:
                     cell.border = border
         
-        # Standard formatting for Summary sheet
+        # Premium formatting for Summary sheet (green theme to match tab)
         if 'Summary' in wb.sheetnames:
             ws = wb['Summary']
-            # Bold, white font on colored header
-            header_fill = PatternFill(start_color='34495E', end_color='34495E', fill_type='solid')
+            # Professional green header (#27AE60) to match tab color
+            header_fill = PatternFill(start_color='27AE60', end_color='27AE60', fill_type='solid')
             header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
             for cell in ws[1]:
                 cell.font = header_font
@@ -1207,7 +1196,7 @@ def export_to_excel(include_raw_events=True):
                 cell.fill = header_fill
             # Freeze top row and first column
             ws.freeze_panes = 'B2'
-            # Autofit column widths
+            # Smart column width optimization
             for col in ws.columns:
                 max_length = 0
                 col_letter = get_column_letter(col[0].column)
@@ -1218,9 +1207,9 @@ def export_to_excel(include_raw_events=True):
                     except:
                         pass
                 ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
-            # Hot and cold alternating row shading
-            fill1 = PatternFill(start_color='FFE5D9', end_color='FFE5D9', fill_type='solid')  # Warm coral (hot)
-            fill2 = PatternFill(start_color='E3F0FF', end_color='E3F0FF', fill_type='solid')  # Cool blue (cold)
+            # Harmonious alternating row shading (subtle green theme)
+            fill1 = PatternFill(start_color='F0F8F0', end_color='F0F8F0', fill_type='solid')  # Very light green
+            fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')  # White
             for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
                 fill = fill1 if i % 2 == 0 else fill2
                 for cell in row:
@@ -1240,11 +1229,12 @@ def export_to_excel(include_raw_events=True):
                         demo_start = row[0].row
                         break
                 # Note: demo_table formatting removed as it's no longer used in the new Summary structure
-        # Optimized formatting for MDR_Texts sheet
+        # Premium formatting for MDR_Texts sheet (orange header to match tab)
         if 'MDR_Texts' in wb.sheetnames:
             ws = wb['MDR_Texts']
-            header_fill = PatternFill(start_color='E0E0E0', end_color='E0E0E0', fill_type='solid')
-            header_font = Font(bold=True, name='Calibri', size=12, color='333333')
+            # Professional orange header (#E67E22) to match tab color
+            header_fill = PatternFill(start_color='E67E22', end_color='E67E22', fill_type='solid')
+            header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
             for cell in ws[1]:
                 cell.font = header_font
                 cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -1263,9 +1253,7 @@ def export_to_excel(include_raw_events=True):
                 elif col_name and 'text_type_code' in col_name.lower():
                     # Text Type Code: 15px width (short codes)
                     ws.column_dimensions[col_letter].width = 15
-                elif col_name and 'mdr_report_key' in col_name.lower():
-                    # MDR Report Key: 18px width (medium length keys)
-                    ws.column_dimensions[col_letter].width = 18
+                # MDR Text Key column removed - no longer needed
                 elif col_name and 'maude_report_link' in col_name.lower():
                     # MAUDE Report Link: 35px width (URLs need more space)
                     ws.column_dimensions[col_letter].width = 35
@@ -1303,7 +1291,183 @@ def export_to_excel(include_raw_events=True):
         import gc
         gc.collect()
         
+        print(f"Export completed: {filename}")
         return filename
+
+def export_raw_events_only():
+    """Export ALL raw event data without any field exclusions - MAXIMUM PERFORMANCE"""
+    import pandas as pd
+    import json
+    import os
+    import gc
+    from datetime import datetime
+    
+    print("Starting Raw Events export (ALL fields) - MAXIMUM PERFORMANCE...")
+    
+    with get_db_connection() as conn:
+        # Get all events with raw JSON
+        events_df = pd.read_sql_query('SELECT id, raw_json FROM events', conn)
+        
+        if events_df.empty:
+            raise Exception("No data found in database. Please run a search first.")
+        
+        print(f"Processing {len(events_df)} events for Raw Events export...")
+        
+        # OPTIMIZATION 1: Adaptive chunking - only for large datasets
+        all_events_data = []
+        
+        if len(events_df) > 5000:  # Only chunk for large datasets
+            print("Large dataset detected - using chunked processing for memory efficiency...")
+            chunk_size = 1000
+            
+            for chunk_start in range(0, len(events_df), chunk_size):
+                chunk_end = min(chunk_start + chunk_size, len(events_df))
+                chunk_df = events_df.iloc[chunk_start:chunk_end]
+                
+                print(f"Processing chunk {chunk_start//chunk_size + 1}/{(len(events_df)-1)//chunk_size + 1} ({chunk_start+1}-{chunk_end})")
+                
+                # Extract ALL fields from raw JSON (no exclusions)
+                chunk_data = []
+                for _, row in chunk_df.iterrows():
+                    if row['raw_json']:
+                        try:
+                            event = json.loads(row['raw_json'])
+                            # Extract ALL fields without any restrictions
+                            extracted = extract_all_fields_optimized(event, row['id'])
+                            chunk_data.append(extracted)
+                        except Exception as e:
+                            print(f"Error processing event {row['id']}: {str(e)}")
+                            chunk_data.append({'event_id': row['id'], 'error': str(e)})
+                
+                all_events_data.extend(chunk_data)
+                
+                # OPTIMIZATION 2: Clear chunk data and force garbage collection
+                del chunk_data
+                gc.collect()
+        else:
+            print("Small dataset - processing all records at once for maximum speed...")
+            # Process all records at once for small datasets (faster)
+            for _, row in events_df.iterrows():
+                if row['raw_json']:
+                    try:
+                        event = json.loads(row['raw_json'])
+                        # Extract ALL fields without any restrictions
+                        extracted = extract_all_fields_optimized(event, row['id'])
+                        all_events_data.append(extracted)
+                    except Exception as e:
+                        print(f"Error processing event {row['id']}: {str(e)}")
+                        all_events_data.append({'event_id': row['id'], 'error': str(e)})
+        
+        if not all_events_data:
+            raise Exception("No valid data found to export.")
+        
+        print("Creating DataFrame...")
+        # Create DataFrame with ALL fields
+        events_flat_df = pd.DataFrame(all_events_data)
+        print(f"Raw Events DataFrame created with {len(events_flat_df)} rows and {len(events_flat_df.columns)} columns")
+        
+        # Sanitize the DataFrame to prevent Excel errors
+        print("Sanitizing data for Excel compatibility...")
+        events_flat_df = sanitize_df(events_flat_df)
+        
+        # OPTIMIZATION 3: Clear original data
+        del all_events_data
+        gc.collect()
+        
+        # OPTIMIZATION 4: Skip date formatting for maximum speed
+        # events_flat_df = format_all_date_columns(events_flat_df)  # COMMENTED OUT FOR SPEED
+        
+        # Generate filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'MAUDEMetrics_RawEvents_{timestamp}.xlsx'
+        
+        print("Writing to Excel with minimal formatting...")
+        # OPTIMIZATION 5: Write to Excel with NO formatting for maximum speed
+        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+            events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
+            
+            # OPTIMIZATION 6: Minimal formatting only
+            wb = writer.book
+            ws = wb['Raw_Events']
+            
+            # Only basic header formatting - no coloring
+            from openpyxl.styles import Font
+            header_font = Font(bold=True)
+            
+            for cell in ws[1]:
+                cell.font = header_font
+            
+            # Freeze header only
+            ws.freeze_panes = 'B2'
+        
+        # OPTIMIZATION 7: Clear DataFrame and force garbage collection
+        del events_flat_df
+        gc.collect()
+        
+        print(f"Raw Events export completed: {filename}")
+        return filename
+
+def extract_all_fields_optimized(event, event_id):
+    """Extract ALL fields from raw JSON without any exclusions - OPTIMIZED VERSION"""
+    result = {'event_id': event_id}
+    
+    def flatten_dict_optimized(d, parent_key='', sep='_'):
+        """Recursively flatten nested dictionaries - OPTIMIZED"""
+        items = []
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(flatten_dict_optimized(v, new_key, sep=sep).items())
+            elif isinstance(v, list):
+                # Handle arrays by creating numbered fields - OPTIMIZED
+                for i, item in enumerate(v, 1):
+                    if isinstance(item, dict):
+                        items.extend(flatten_dict_optimized(item, f"{new_key}_{i}", sep=sep).items())
+                    else:
+                        # Sanitize text values to prevent Excel errors
+                        if isinstance(item, str):
+                            item = sanitize_text(item)
+                        items.append((f"{new_key}_{i}", item))
+            else:
+                # Sanitize text values to prevent Excel errors
+                if isinstance(v, str):
+                    v = sanitize_text(v)
+                items.append((new_key, v))
+        return dict(items)
+    
+    # Flatten the entire event structure
+    flattened = flatten_dict_optimized(event)
+    result.update(flattened)
+    
+    return result
+
+def extract_all_fields(event, event_id):
+    """Extract ALL fields from raw JSON without any exclusions"""
+    result = {'event_id': event_id}
+    
+    def flatten_dict(d, parent_key='', sep='_'):
+        """Recursively flatten nested dictionaries"""
+        items = []
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(flatten_dict(v, new_key, sep=sep).items())
+            elif isinstance(v, list):
+                # Handle arrays by creating numbered fields
+                for i, item in enumerate(v, 1):
+                    if isinstance(item, dict):
+                        items.extend(flatten_dict(item, f"{new_key}_{i}", sep=sep).items())
+                    else:
+                        items.append((f"{new_key}_{i}", item))
+            else:
+                items.append((new_key, v))
+        return dict(items)
+    
+    # Flatten the entire event structure
+    flattened = flatten_dict(event)
+    result.update(flattened)
+    
+    return result
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -1446,6 +1610,14 @@ def export_data():
         return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
         return f"Error exporting data: {str(e)}", 500
+
+@app.route('/export/raw')
+def export_raw_events():
+    try:
+        filename = export_raw_events_only()
+        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        return f"Error exporting raw events: {str(e)}", 500
 
 @app.route('/analytics')
 def analytics():
@@ -1617,13 +1789,13 @@ def analytics():
         brand_name_table = make_table(df, 'device_brand_name', 'Brand Name')
         # Type of Device (Generic Name)
         generic_name_table = make_table(df, 'device_generic_name', 'Product Class')
-        # Product Problems
+        # Device Problem
         prod_cols = [c for c in df.columns if c.startswith('product_problems')]
         prod_vals = pd.Series(df[prod_cols].values.flatten()).dropna()
         total_prod = len(prod_vals)
         prod_counts = prod_vals.value_counts()
         product_problems_table = [{"label": k, "count": v, "percent": f"{100*v/total_prod:.1f}%"} for k, v in prod_counts.items()] if total_prod > 0 else []
-        # Patient Problems
+        # Patient Problem
         pprob_cols = [c for c in df.columns if c.startswith('patient_patient_problems')]
         pprob_vals = pd.Series(df[pprob_cols].values.flatten()).dropna()
         total_pprob = len(pprob_vals)

@@ -30,6 +30,32 @@ body {
   background: #f8fafc;
 }
 
+/* Enhanced Dropdown Styling */
+.dropdown-menu {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background-color: #f0f8ff;
+}
+
+.dropdown-item {
+    color: #495057;
+    transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #28a745;
+    color: #ffffff;
+    transform: translateX(2px);
+}
+
+.dropdown-item:active {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+
+
 /* Container Styles */
 .container {
   max-width: 900px;
@@ -41,10 +67,10 @@ body {
 /* Highlighted Title Bar */
 .highlight-title {
     display: inline-block;
-    background: linear-gradient(90deg, #1976d2 0%, #90caf9 100%);
+    background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%);
     color: #fff;
     border-radius: 18px;
-    box-shadow: 0 4px 18px rgba(25, 118, 210, 0.13);
+    box-shadow: 0 4px 18px rgba(30, 58, 138, 0.13);
     padding: 18px 38px 18px 38px;
     margin-bottom: 8px;
     font-size: 2.2em;
@@ -59,7 +85,7 @@ body {
     font-size: 1em;
     font-weight: 900;
     letter-spacing: 0.5px;
-    text-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+    text-shadow: 0 2px 8px rgba(30, 58, 138, 0.08);
 }
 .page-title-section {
     margin-bottom: 2.5rem;
@@ -88,7 +114,7 @@ body {
     box-shadow: 0 2px 8px rgba(33, 37, 41, 0.06);
 }
 
-/* Ensure red card with white text for Total Reports (Query) */
+/* Ensure red card with white text for Total New Records */
 .card.bg-danger.text-white, .bg-danger.text-white.card, .card .bg-danger.text-white {
     background-color: #d32f2f !important;
     color: #fff !important;
@@ -96,7 +122,7 @@ body {
 
 /* Ensure blue card with white text for Total Reports (Analytics) */
 .card.bg-primary.text-white, .bg-primary.text-white.card, .card .bg-primary.text-white {
-    background-color: #1976d2 !important;
+    background-color: #1e3a8a !important;
     color: #fff !important;
 }
 
@@ -302,13 +328,13 @@ tr:hover {
 
 /* Link Styles */
 a {
-    color: #1976d2;
+    color: #1e3a8a;
     text-decoration: none;
     font-weight: 500;
     transition: color 0.2s;
 }
 a:hover {
-    color: #1565c0;
+    color: #3b82f6;
 }
 
 /* Responsive Design */
@@ -379,10 +405,38 @@ a:hover {
 }
 .maude-title {
     font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
-    font-size: 2.5em;
-    font-weight: 700;
-    color: #1976d2;
-    letter-spacing: 0.5px;
+    font-size: 2.4em;
+    font-weight: 800;
+    background: #ffffff;
+    color: #1e3a8a;
+    padding: 0.8rem 2.5rem;
+    border-radius: 50px;
+    display: inline-block;
+    box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3);
+    border: 3px solid #1e3a8a;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.maude-title::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.maude-title:hover::before {
+    left: 100%;
+}
+
+.maude-title:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(30, 58, 138, 0.4);
 }
 .maude-subtitle {
     font-size: 1.25em;
@@ -393,7 +447,7 @@ a:hover {
 .maude-divider {
     width: 70px;
     height: 4px;
-    background: #1976d2;
+    background: #1e3a8a;
     border-radius: 2px;
     margin: 1.1em auto 1.1em auto;
 }
@@ -426,7 +480,7 @@ a:hover {
 }
 .footer-author {
   font-size: 1.05rem;
-  color: #1976d2;
+  color: #1e3a8a;
   font-weight: 500;
 }
 .footer-disclaimer {
@@ -484,6 +538,42 @@ footer.custom-footer {
   color: #fff !important;
 }
 
+/* Navbar Brand Badge Style */
+.navbar-brand {
+  background: #ffffff;
+  color: #1e3a8a !important;
+  padding: 0.5rem 1.5rem;
+  border-radius: 25px;
+  display: inline-block;
+  box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2);
+  border: 2px solid #1e3a8a;
+  font-weight: 800;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-brand::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(30, 58, 138, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.navbar-brand:hover::before {
+  left: 100%;
+}
+
+.navbar-brand:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.3);
+}
+
 /* Responsive: full-width buttons on mobile */
 @media (max-width: 600px) {
   .btn, .btn-lg, .btn-primary {
@@ -508,7 +598,7 @@ footer.custom-footer {
 .maude-title {
   font-size: 2.7rem;
   font-weight: 700;
-  color: #174ea6;
+  color: #1e3a8a;
   letter-spacing: -1px;
   margin-bottom: 0.5rem;
 }
@@ -522,7 +612,7 @@ footer.custom-footer {
 
 .maude-mission {
   font-size: 1.1rem;
-  color: #218838;
+  color: #1e3a8a;
   font-weight: 600;
   margin-bottom: 0.7rem;
 }
