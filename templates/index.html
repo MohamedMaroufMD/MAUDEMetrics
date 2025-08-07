@@ -111,6 +111,24 @@
             {% endif %}
           </form>
         </div>
+        <!-- Real-time Console Messages -->
+        <div id="consoleContainer" class="mt-4 mb-4" style="display: none;">
+          <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none; padding: 1rem 1.5rem;">
+              <div class="d-flex align-items-center">
+                <div class="me-3" style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);"></div>
+                <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i>Real-time Console</h6>
+              </div>
+              <button type="button" class="btn-close btn-close-white" onclick="hideConsole()" style="opacity: 0.8; font-size: 0.9rem;"></button>
+            </div>
+            <div class="card-body p-0">
+              <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; max-height: 280px; overflow-y: auto; padding: 1.25rem; border-radius: 0 0 0.5rem 0.5rem; border-top: 1px solid #334155;">
+                <div id="consoleOutput" style="line-height: 1.6;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Action Buttons -->
         <div class="mb-3 d-flex flex-nowrap gap-2 justify-content-center align-items-center">
             <a href="/results" class="btn btn-primary d-flex align-items-center gap-2" aria-label="View Results"><span class="bi bi-bar-chart"></span> View Results</a>
@@ -168,8 +186,26 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Real-time Console Messages -->
+    <div id="consoleContainer" class="mt-4 mb-4" style="display: none;">
+      <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none;">
+          <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i>Real-time Console</h6>
+          <button type="button" class="btn-close btn-close-white" onclick="hideConsole()" style="opacity: 0.8;"></button>
+        </div>
+        <div class="card-body p-0">
+          <div style="background: #1e1e1e; color: #00ff00; font-family: 'Courier New', monospace; max-height: 250px; overflow-y: auto; padding: 1rem; border-radius: 0 0 0.375rem 0.375rem;">
+            <div id="consoleOutput"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Simple Spinner JavaScript -->
     <script>
+      let extractionEventSource = null;
+      let exportEventSource = null;
+      
       document.addEventListener('DOMContentLoaded', function() {
         // Extract Data spinner
         const extractBtn = document.getElementById('extractBtn');
@@ -178,6 +214,8 @@
         if (extractBtn) {
           extractBtn.addEventListener('click', function() {
             extractSpinner.style.display = 'block';
+            showConsole();
+            startExtractionStream();
           });
         }
         
@@ -194,15 +232,92 @@
         if (exportOptimizedBtn && exportMessage) {
           exportOptimizedBtn.addEventListener('click', function() {
             exportMessage.style.display = 'block';
+            showConsole();
+            startExportStream();
           });
         }
         
         if (exportRawBtn && exportMessage) {
           exportRawBtn.addEventListener('click', function() {
             exportMessage.style.display = 'block';
+            showConsole();
+            startExportStream();
           });
         }
       });
+      
+      function showConsole() {
+        document.getElementById('consoleContainer').style.display = 'block';
+        document.getElementById('consoleOutput').innerHTML = '';
+      }
+      
+      function hideConsole() {
+        document.getElementById('consoleContainer').style.display = 'none';
+        if (extractionEventSource) {
+          extractionEventSource.close();
+          extractionEventSource = null;
+        }
+        if (exportEventSource) {
+          exportEventSource.close();
+          exportEventSource = null;
+        }
+      }
+      
+      function addConsoleMessage(message, timestamp) {
+        const consoleOutput = document.getElementById('consoleOutput');
+        const messageDiv = document.createElement('div');
+        messageDiv.style.marginBottom = '0.5rem';
+        messageDiv.style.padding = '0.25rem 0';
+        
+        // Enhanced message formatting with better colors
+        const timestampSpan = `<span style="color: #64748b; font-weight: 500;">[${timestamp}]</span>`;
+        const messageSpan = `<span style="color: #e2e8f0;">${message}</span>`;
+        
+        messageDiv.innerHTML = `${timestampSpan} ${messageSpan}`;
+        consoleOutput.appendChild(messageDiv);
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+      
+      function startExtractionStream() {
+        if (extractionEventSource) {
+          extractionEventSource.close();
+        }
+        
+        extractionEventSource = new EventSource('/stream/extraction');
+        extractionEventSource.onmessage = function(event) {
+          const data = JSON.parse(event.data);
+          if (data.message !== 'keepalive') {
+            addConsoleMessage(data.message, data.timestamp);
+          }
+        };
+        
+        extractionEventSource.onerror = function(event) {
+          console.error('Extraction stream error:', event);
+          extractionEventSource.close();
+        };
+      }
+      
+      function startExportStream() {
+        if (exportEventSource) {
+          exportEventSource.close();
+        }
+        
+        exportEventSource = new EventSource('/stream/export');
+        exportEventSource.onmessage = function(event) {
+          const data = JSON.parse(event.data);
+          if (data.message !== 'keepalive') {
+            addConsoleMessage(data.message, data.timestamp);
+          }
+        };
+        
+        exportEventSource.onerror = function(event) {
+          console.error('Export stream error:', event);
+          exportEventSource.close();
+        };
+      }
+      
+      // Clear messages when page loads
+      fetch('/api/clear-messages');
     </script>
 </body>
 </html>

@@ -20,7 +20,7 @@ limitations under the License.
 For research and educational purposes only. Not for clinical decision-making.
 """
 
-from flask import Flask, request, render_template, redirect, url_for, send_file, session, send_from_directory
+from flask import Flask, request, render_template, redirect, url_for, send_file, session, send_from_directory, Response, jsonify
 import requests
 import pandas as pd
 import sqlite3
@@ -28,17 +28,39 @@ from datetime import datetime
 import json
 import os
 import re
+import time
+import threading
+from queue import Queue
 
 app = Flask(__name__)
 app.secret_key = 'replace_this_with_a_random_secret_key_12345'
 
 DATABASE = 'fda_data.db'
 
+# Global message queues for real-time updates
+extraction_messages = Queue()
+export_messages = Queue()
+
 # Function to get a database connection
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
+
+# Real-time message logging functions
+def log_extraction_message(message):
+    """Log a message for real-time extraction updates"""
+    extraction_messages.put({
+        'timestamp': datetime.now().strftime('%H:%M:%S'),
+        'message': message
+    })
+
+def log_export_message(message):
+    """Log a message for real-time export updates"""
+    export_messages.put({
+        'timestamp': datetime.now().strftime('%H:%M:%S'),
+        'message': message
+    })
 
 # Create comprehensive database tables
 def init_db():
@@ -136,28 +158,47 @@ def init_db():
         
         conn.commit()
 
-# Enhanced fetch function with pagination
+# Enhanced fetch function with pagination and real-time logging
 def fetch_all_API_data(base_query, max_records=None):
     all_data = []
     skip = 0
     limit = 1000  # Maximum allowed by FDA API
     
+    log_extraction_message("Starting FDA API data extraction...")
+    
+    # Get total count from first API call
+    total_count = 0
+    first_response = requests.get(f"{base_query}&limit=1")
+    if first_response.status_code == 200:
+        first_data = first_response.json()
+        total_count = first_data.get('meta', {}).get('results', {}).get('total', 0)
+        log_extraction_message(f"Found {total_count:,} total records available in FDA database")
+    
     while True:
         query = f"{base_query}&limit={limit}&skip={skip}"
-        print(f"Fetching records {skip} to {skip + limit}...")
+        current_batch = skip + limit
+        if total_count > 0:
+            log_extraction_message(f"Fetching records {skip + 1:,} to {min(current_batch, total_count):,} of {total_count:,}...")
+        else:
+            log_extraction_message(f"Fetching records {skip + 1:,} to {current_batch:,}...")
         
         response = requests.get(query)
         if response.status_code != 200:
-            print(f"Error fetching data: {response.status_code}")
+            log_extraction_message(f"Error fetching data: {response.status_code}")
             break
             
         data = response.json()
         results = data.get('results', [])
         
         if not results:
+            log_extraction_message("No more results found")
             break
             
         all_data.extend(results)
+        if total_count > 0:
+            log_extraction_message(f"Retrieved {len(results):,} records (Progress: {len(all_data):,}/{total_count:,})")
+        else:
+            log_extraction_message(f"Retrieved {len(results):,} records (Total: {len(all_data):,})")
         
         # Check if we've reached the maximum or if there are no more results
         total_results = data.get('meta', {}).get('results', {}).get('total', 0)
@@ -166,12 +207,24 @@ def fetch_all_API_data(base_query, max_records=None):
             
         skip += limit
     
+    if max_records and len(all_data) >= max_records:
+        log_extraction_message(f"API extraction completed. Retrieved {len(all_data):,} records (limited to {max_records:,})")
+    else:
+        log_extraction_message(f"API extraction completed. Retrieved {len(all_data):,} records out of {total_count:,} available")
     return all_data
 
-# Enhanced save function for comprehensive data
+# Enhanced save function for comprehensive data with real-time logging
 def save_comprehensive_data(data):
+    log_extraction_message("Starting database save operation...")
+    
     with get_db_connection() as conn:
-        for record in data:
+        total_records = len(data)
+        log_extraction_message(f"Processing {total_records:,} records for database storage...")
+        
+        for i, record in enumerate(data, 1):
+            if i % 100 == 0:  # Log progress every 100 records
+                log_extraction_message(f"Processing record {i:,}/{total_records:,}...")
+            
             # Insert main event record
             cursor = conn.execute('''
                 INSERT INTO events (
@@ -287,6 +340,7 @@ def save_comprehensive_data(data):
                 ))
         
         conn.commit()
+        log_extraction_message("Database save completed successfully!")
 
 
 
@@ -388,6 +442,8 @@ def export_to_excel(include_raw_events=True):
     from datetime import datetime
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     fields_path = os.path.join(BASE_DIR, 'fields.xlsx')
+    
+    log_export_message("Starting Excel export process...")
     # Main fields and array fields for the Main Fields sheet
     main_fields = [
         'event_id', 'report_number', 'mdr_report_key', 'maude_report_link',
@@ -638,6 +694,8 @@ def export_to_excel(include_raw_events=True):
                 # 1. EVENTS - Extract only user-specified fields, event_id as first column (OPTIMIZED)
                 events_query = 'SELECT id, raw_json FROM events ORDER BY id'
                 events_df = pd.read_sql_query(events_query, conn)
+                total_events = len(events_df)
+                log_export_message(f"Processing {total_events:,} events for export...")
                 print('Events DataFrame shape:', events_df.shape)
                 
                 # OPTIMIZATION 1: Pre-compile regex patterns for better performance
@@ -661,8 +719,11 @@ def export_to_excel(include_raw_events=True):
                     raise Exception('No data to export. Please run a search and try again.')
                 
                 if all_events_data:
+                    log_export_message(f"Creating Events DataFrame with {len(all_events_data):,} records...")
                     events_flat_df = pd.DataFrame(all_events_data)
+                    log_export_message("Sanitizing data for Excel compatibility...")
                     events_flat_df = sanitize_df(events_flat_df)
+                    log_export_message("Formatting date columns...")
                     events_flat_df = format_all_date_columns(events_flat_df)
                     # Build ordered columns: event_id, then for each field, its array columns immediately after
                     ordered_cols = ['event_id']
@@ -686,9 +747,11 @@ def export_to_excel(include_raw_events=True):
                     
                     # Only write Raw_Events sheet if requested
                     if include_raw_events:
+                        log_export_message("Writing Raw_Events sheet to Excel...")
                         print("Writing Raw_Events sheet to Excel...")
                         events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
                     else:
+                        log_export_message("Skipping Raw_Events sheet for better performance...")
                         print("Skipping Raw_Events sheet for better performance...")
                     # --- Restore main_fields_df construction ---
                     main_fields_cols = []
@@ -837,6 +900,7 @@ def export_to_excel(include_raw_events=True):
                     # Apply FDA code translation for user-friendly display
                     main_fields_df = translate_fda_codes(main_fields_df)
                     
+                    log_export_message(f"Writing Events sheet to Excel ({len(main_fields_df):,} rows)...")
                     main_fields_df.to_excel(writer, sheet_name='Events', index=False)
                 # 2. MDR TEXTS - Add event_id, mdr_report_key, and maude_report_link (link only for first row per event_id)
                 mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
@@ -889,6 +953,7 @@ def export_to_excel(include_raw_events=True):
                             else:
                                 prev_value = current_value
                 
+                log_export_message(f"Writing MDR_Texts sheet to Excel ({len(mdr_texts_df):,} rows)...")
                 mdr_texts_df.to_excel(writer, sheet_name='MDR_Texts', index=False)
                 # --- Improved All-in-One Summary Sheet ---
                 summary_blocks = []
@@ -998,6 +1063,7 @@ def export_to_excel(include_raw_events=True):
                     pprob_table_start = len(summary_blocks)
                     summary_blocks.append(pprob_df)
                     summary_blocks.append(pd.DataFrame({'': ['']}))
+                log_export_message("Creating Summary sheet with analytics...")
                 # Write all summary blocks to the Summary sheet in the same writer session
                 # Add Events Missing Patient Data at the end
                 missing_patients = pd.read_sql_query('''
@@ -1291,6 +1357,7 @@ def export_to_excel(include_raw_events=True):
         import gc
         gc.collect()
         
+        log_export_message(f"Export completed: {filename}")
         print(f"Export completed: {filename}")
         return filename
 
@@ -1302,6 +1369,7 @@ def export_raw_events_only():
     import gc
     from datetime import datetime
     
+    log_export_message("Starting Raw Events export (ALL fields) - MAXIMUM PERFORMANCE...")
     print("Starting Raw Events export (ALL fields) - MAXIMUM PERFORMANCE...")
     
     with get_db_connection() as conn:
@@ -1311,12 +1379,15 @@ def export_raw_events_only():
         if events_df.empty:
             raise Exception("No data found in database. Please run a search first.")
         
-        print(f"Processing {len(events_df)} events for Raw Events export...")
+        total_events = len(events_df)
+        log_export_message(f"Processing {total_events:,} events for Raw Events export...")
+        print(f"Processing {total_events:,} events for Raw Events export...")
         
         # OPTIMIZATION 1: Adaptive chunking - only for large datasets
         all_events_data = []
         
         if len(events_df) > 5000:  # Only chunk for large datasets
+            log_export_message("Large dataset detected - using chunked processing for memory efficiency...")
             print("Large dataset detected - using chunked processing for memory efficiency...")
             chunk_size = 1000
             
@@ -1324,7 +1395,10 @@ def export_raw_events_only():
                 chunk_end = min(chunk_start + chunk_size, len(events_df))
                 chunk_df = events_df.iloc[chunk_start:chunk_end]
                 
-                print(f"Processing chunk {chunk_start//chunk_size + 1}/{(len(events_df)-1)//chunk_size + 1} ({chunk_start+1}-{chunk_end})")
+                chunk_num = chunk_start//chunk_size + 1
+                total_chunks = (len(events_df)-1)//chunk_size + 1
+                log_export_message(f"Processing chunk {chunk_num}/{total_chunks} ({chunk_start+1:,}-{chunk_end:,} of {total_events:,})")
+                print(f"Processing chunk {chunk_num}/{total_chunks} ({chunk_start+1:,}-{chunk_end:,} of {total_events:,})")
                 
                 # Extract ALL fields from raw JSON (no exclusions)
                 chunk_data = []
@@ -1345,6 +1419,7 @@ def export_raw_events_only():
                 del chunk_data
                 gc.collect()
         else:
+            log_export_message("Small dataset - processing all records at once for maximum speed...")
             print("Small dataset - processing all records at once for maximum speed...")
             # Process all records at once for small datasets (faster)
             for _, row in events_df.iterrows():
@@ -1361,12 +1436,15 @@ def export_raw_events_only():
         if not all_events_data:
             raise Exception("No valid data found to export.")
         
+        log_export_message("Creating DataFrame...")
         print("Creating DataFrame...")
         # Create DataFrame with ALL fields
         events_flat_df = pd.DataFrame(all_events_data)
-        print(f"Raw Events DataFrame created with {len(events_flat_df)} rows and {len(events_flat_df.columns)} columns")
+        log_export_message(f"Raw Events DataFrame created with {len(events_flat_df):,} rows and {len(events_flat_df.columns)} columns")
+        print(f"Raw Events DataFrame created with {len(events_flat_df):,} rows and {len(events_flat_df.columns)} columns")
         
         # Sanitize the DataFrame to prevent Excel errors
+        log_export_message("Sanitizing data for Excel compatibility...")
         print("Sanitizing data for Excel compatibility...")
         events_flat_df = sanitize_df(events_flat_df)
         
@@ -1381,6 +1459,7 @@ def export_raw_events_only():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'MAUDEMetrics_RawEvents_{timestamp}.xlsx'
         
+        log_export_message("Writing to Excel with minimal formatting...")
         print("Writing to Excel with minimal formatting...")
         # OPTIMIZATION 5: Write to Excel with NO formatting for maximum speed
         with pd.ExcelWriter(filename, engine='openpyxl') as writer:
@@ -1404,6 +1483,7 @@ def export_raw_events_only():
         del events_flat_df
         gc.collect()
         
+        log_export_message(f"Raw Events export completed: {filename}")
         print(f"Raw Events export completed: {filename}")
         return filename
 
@@ -1869,6 +1949,46 @@ def clear_data():
         conn.commit()
     session['total_count'] = None  # Reset the total_count for the results page
     return redirect(url_for('index'))
+
+# Real-time messaging endpoints
+@app.route('/stream/extraction')
+def stream_extraction():
+    """Server-Sent Events endpoint for extraction messages"""
+    def generate():
+        while True:
+            try:
+                # Get message from queue with timeout
+                message = extraction_messages.get(timeout=1)
+                yield f"data: {json.dumps(message)}\n\n"
+            except:
+                # Send keepalive
+                yield f"data: {json.dumps({'timestamp': datetime.now().strftime('%H:%M:%S'), 'message': 'keepalive'})}\n\n"
+    
+    return Response(generate(), mimetype='text/event-stream')
+
+@app.route('/stream/export')
+def stream_export():
+    """Server-Sent Events endpoint for export messages"""
+    def generate():
+        while True:
+            try:
+                # Get message from queue with timeout
+                message = export_messages.get(timeout=1)
+                yield f"data: {json.dumps(message)}\n\n"
+            except:
+                # Send keepalive
+                yield f"data: {json.dumps({'timestamp': datetime.now().strftime('%H:%M:%S'), 'message': 'keepalive'})}\n\n"
+    
+    return Response(generate(), mimetype='text/event-stream')
+
+@app.route('/api/clear-messages')
+def clear_messages():
+    """Clear message queues"""
+    while not extraction_messages.empty():
+        extraction_messages.get()
+    while not export_messages.empty():
+        export_messages.get()
+    return jsonify({'status': 'cleared'})
 
 
 
