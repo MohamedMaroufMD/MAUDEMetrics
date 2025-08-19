@@ -89,10 +89,9 @@ The system processes over 100 FDA data fields including:
 - Narrative reports (MDR texts with problem descriptions)
 
 ### Professional Export System
-Excel exports include four specialized sheets:
+Excel exports include three specialized sheets:
 - **Raw_Events**: Complete event data with all FDA fields
-- **MDR_Texts**: Narrative reports and problem descriptions
-- **Custom_Events**: Processed data with consistent formatting and enhanced readability
+- **Events**: Processed data with consistent formatting, enhanced readability, and integrated MDR texts
 - **Summary**: Patient demographics, event types, and product problems with statistical summaries
 
 ### Interactive Analytics Dashboard

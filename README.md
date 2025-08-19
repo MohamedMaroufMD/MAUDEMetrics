@@ -58,8 +58,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 ### 📈 Data Export & Reporting
 - **Multi-Sheet Export:** Professional formatting with multiple sheets
 - **Raw Events Sheet:** Complete event data for analysis
-- **MDR Texts Sheet:** Narrative reports and problem descriptions
-- **Custom Events Sheet:** Processed data with consistent formatting
+- **Events Sheet:** Processed data with consistent formatting and integrated MDR texts
 - **Summary Sheet:** Patient demographics and event summaries
 
 ### 🎨 Modern User Interface
@@ -160,8 +159,7 @@ Then visit [http://localhost:5005](http://localhost:5005) in your browser.
 
 ### Export Features
 - **Raw_Events Sheet:** Complete event data with all FDA fields
-- **MDR_Texts Sheet:** Narrative reports and problem descriptions
-- **Custom_Events Sheet:** Processed data with consistent formatting
+- **Events Sheet:** Processed data with consistent formatting and integrated MDR texts
 - **Summary Sheet:** Patient demographics, event types, and device problems
 
 ### Data Formatting
@@ -234,8 +232,8 @@ A: No, all searches are case-insensitive with partial matching.
 **Q: How are dates formatted in exports?**  
 A: All dates are consistently formatted as mm/dd/yyyy across all sheets.
 
-**Q: What makes the Custom_Events sheet special?**  
-A: It's the premium "golden sheet" with professional formatting, smart column organization, and optimized performance for the best user experience.
+**Q: What makes the Events sheet special?**  
+A: It's the premium "golden sheet" with professional formatting, smart column organization, integrated MDR texts, and optimized performance for the best user experience.
 
 **Q: How do I cite this software?**  
 A: Please use the citation information in the CITATION.cff file or cite the JOSS paper when published.

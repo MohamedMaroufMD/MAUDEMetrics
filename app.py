@@ -779,7 +779,7 @@ def export_to_excel(include_raw_events=True):
                     
                     # Remove columns with no data
                     if blank_cols:
-                        print(f"Removing {len(blank_cols)} blank columns from Custom_Events: {blank_cols}")
+                        print(f"Removing {len(blank_cols)} blank columns from Events: {blank_cols}")
                         main_fields_df = main_fields_df.drop(columns=blank_cols)
                     
                     # Enhanced humanize function for professional column naming
@@ -855,13 +855,14 @@ def export_to_excel(include_raw_events=True):
                     # Apply enhanced column naming
                     main_fields_df.columns = [enhanced_humanize(c) for c in main_fields_df.columns]
                     
-                    # Intelligent column reordering for Custom_Events sheet
+                    # Intelligent column reordering for Events sheet
                     # Define base priority order (without array numbers)
                     base_priority_order = [
                         'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
                         'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
                         'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Catalog Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
-                        'Adverse Event Flag', 'Product Problem Flag', 'Device Problem', 'Patient Problem', 'Patient Outcome', 'Patient Treatment'
+                        'Adverse Event Flag', 'Product Problem Flag', 'Device Problem', 'Patient Problem', 'Patient Outcome', 'Patient Treatment',
+                        'Description of Event or Problem', 'Additional Manufacturer Narrative', 'Other MDR Text'
                     ]
                     
                     # Build complete priority columns maintaining original position order
@@ -900,61 +901,80 @@ def export_to_excel(include_raw_events=True):
                     # Apply FDA code translation for user-friendly display
                     main_fields_df = translate_fda_codes(main_fields_df)
                     
+                    # 2. MDR TEXTS - Integrate into Events sheet BEFORE writing to Excel
+                    mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
+                    mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
+                    
+                    # Process MDR texts to add to Events sheet
+                    if not mdr_texts_df.empty:
+                        log_export_message("Processing MDR texts for Events sheet integration...")
+                        
+                        # Group MDR texts by event_id and text_type_code
+                        mdr_texts_grouped = {}
+                        for _, row in mdr_texts_df.iterrows():
+                            event_id = int(row['event_id'])  # Ensure it's an integer
+                            text_type_code = row['text_type_code']
+                            text = row['text']
+                            
+                            # Handle missing or null text_type_code
+                            if pd.isna(text_type_code) or text_type_code is None or text_type_code == '':
+                                text_type_code = 'Other MDR Text'
+                            
+                            if event_id not in mdr_texts_grouped:
+                                mdr_texts_grouped[event_id] = {}
+                            
+                            if text_type_code not in mdr_texts_grouped[event_id]:
+                                mdr_texts_grouped[event_id][text_type_code] = []
+                            
+                            mdr_texts_grouped[event_id][text_type_code].append(text)
+                        
+                        # Add MDR text columns to main_fields_df
+                        # Priority: "Description of Event or Problem" first, then "Additional Manufacturer Narrative", then "Other MDR Text"
+                        mdr_text_columns = []
+                        manufacturer_narrative_columns = []
+                        other_mdr_text_columns = []
+                        
+                        for event_id in main_fields_df['Event ID']:
+                            event_id_int = int(event_id)  # Ensure it's an integer for matching
+                            event_mdr_texts = mdr_texts_grouped.get(event_id_int, {})
+                            
+                            # Get "Description of Event or Problem" (using actual text_type_code from data)
+                            event_description = event_mdr_texts.get('Description of Event or Problem', [])
+                            if event_description:
+                                mdr_text_columns.append('; '.join(event_description))
+                            else:
+                                mdr_text_columns.append('')
+                            
+                            # Get "Additional Manufacturer Narrative" (using actual text_type_code from data)
+                            manufacturer_narrative = event_mdr_texts.get('Additional Manufacturer Narrative', [])
+                            if manufacturer_narrative:
+                                manufacturer_narrative_columns.append('; '.join(manufacturer_narrative))
+                            else:
+                                manufacturer_narrative_columns.append('')
+                            
+                            # Get "Other MDR Text" (texts with missing or unknown text_type_code)
+                            other_mdr_text = event_mdr_texts.get('Other MDR Text', [])
+                            if other_mdr_text:
+                                other_mdr_text_columns.append('; '.join(other_mdr_text))
+                            else:
+                                other_mdr_text_columns.append('')
+                        
+                        # Add "Description of Event or Problem" column
+                        main_fields_df['Description of Event or Problem'] = mdr_text_columns
+                        
+                        # Add "Additional Manufacturer Narrative" column
+                        main_fields_df['Additional Manufacturer Narrative'] = manufacturer_narrative_columns
+                        
+                        # Add "Other MDR Text" column (only if there are any)
+                        if any(other_mdr_text_columns):
+                            main_fields_df['Other MDR Text'] = other_mdr_text_columns
+                        
+                        log_export_message("MDR texts integrated into Events sheet")
+                    else:
+                        log_export_message("No MDR texts found to integrate")
+                    
                     log_export_message(f"Writing Events sheet to Excel ({len(main_fields_df):,} rows)...")
                     main_fields_df.to_excel(writer, sheet_name='Events', index=False)
-                # 2. MDR TEXTS - Add event_id, mdr_report_key, and maude_report_link (link only for first row per event_id)
-                mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
-                mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
-                # OPTIMIZATION 5: Reuse already processed event data instead of re-parsing JSON
-                event_keys = {}
-                event_links = {}
-                for _, row in events_df.iterrows():
-                    try:
-                        event = json.loads(row['raw_json'])
-                        event_keys[row['id']] = event.get('mdr_report_key', '')
-                        mdr_report_key = event.get('mdr_report_key', '')
-                        devices = event.get('device', [])
-                        maude_link = ''
-                        if mdr_report_key:
-                            pc = ''
-                            seq = ''
-                            if devices and isinstance(devices, list) and devices:
-                                pc = devices[0].get('device_report_product_code', '')
-                                seq = devices[0].get('device_sequence_number', '')
-                            if pc and seq:
-                                maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}&device_sequence_no={seq}"
-                            else:
-                                maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}"
-                        event_links[row['id']] = maude_link
-                    except:
-                        event_keys[row['id']] = ''
-                        event_links[row['id']] = ''
-                
-                # Use mdr_text_key from the mdr_texts table instead of mdr_report_key from events
-                # The mdr_text_key column is already in the mdr_texts_df from the database query
-                
-                # OPTIMIZATION: Use vectorized operations for maude_report_link assignment
-                mdr_texts_df['maude_report_link'] = mdr_texts_df['event_id'].map(event_links)
-                mdr_texts_df = sanitize_df(mdr_texts_df)
-                mdr_texts_df = format_all_date_columns(mdr_texts_df)
-                # Reorder and filter columns for MDR_Texts sheet
-                mdr_cols = ['event_id', 'maude_report_link', 'text_type_code', 'text']
-                mdr_texts_df = mdr_texts_df[[col for col in mdr_cols if col in mdr_texts_df.columns]]
-                
-                # Remove repeated values in MDR_Texts sheet (keep first occurrence, empty the rest)
-                dedup_columns = ['event_id', 'maude_report_link', 'text_type_code']
-                for col in dedup_columns:
-                    if col in mdr_texts_df.columns:
-                        prev_value = None
-                        for idx in mdr_texts_df.index:
-                            current_value = mdr_texts_df.at[idx, col]
-                            if current_value == prev_value:
-                                mdr_texts_df.at[idx, col] = ''
-                            else:
-                                prev_value = current_value
-                
-                log_export_message(f"Writing MDR_Texts sheet to Excel ({len(mdr_texts_df):,} rows)...")
-                mdr_texts_df.to_excel(writer, sheet_name='MDR_Texts', index=False)
                 # --- Improved All-in-One Summary Sheet ---
                 summary_blocks = []
                 # 1. Total Reports
@@ -1164,18 +1184,17 @@ def export_to_excel(include_raw_events=True):
         from openpyxl.utils import get_column_letter
         wb = load_workbook(filename)
         # Ensure all main sheets are visible
-        for sheet_name in ['Events', 'MDR_Texts', 'Summary']:
+        for sheet_name in ['Events', 'Summary']:
             if sheet_name in wb.sheetnames:
                 wb[sheet_name].sheet_state = 'visible'
         # Reorder sheets using openpyxl's move_sheet
-        desired_order = ['Events', 'MDR_Texts', 'Summary']
+        desired_order = ['Events', 'Summary']
         for idx, sheet_name in enumerate(desired_order):
             if sheet_name in wb.sheetnames:
                 wb.move_sheet(wb[sheet_name], offset=idx - wb.sheetnames.index(sheet_name))
         # Color sheet tabs
         tab_colors = {
             'Events': '1072BA',       # Blue
-            'MDR_Texts': 'E67E22',    # Orange
             'Summary': '27AE60'       # Green
         }
         for sheet_name, color in tab_colors.items():
@@ -1229,6 +1248,9 @@ def export_to_excel(include_raw_events=True):
                 elif col_name and any(flag_word in col_name.lower() for flag_word in ['flag']):
                     # Flag columns: 16px width (good for short categorical data)
                     ws.column_dimensions[col_letter].width = 16
+                elif col_name and any(mdr_word in col_name.lower() for mdr_word in ['description of event', 'additional manufacturer narrative', 'other mdr text']):
+                    # MDR text columns: 25px width (for detailed narrative content)
+                    ws.column_dimensions[col_letter].width = 25
                 else:
                     # Standard columns: 20px width (optimal for medium text)
                     ws.column_dimensions[col_letter].width = 20
@@ -1295,58 +1317,7 @@ def export_to_excel(include_raw_events=True):
                         demo_start = row[0].row
                         break
                 # Note: demo_table formatting removed as it's no longer used in the new Summary structure
-        # Premium formatting for MDR_Texts sheet (orange header to match tab)
-        if 'MDR_Texts' in wb.sheetnames:
-            ws = wb['MDR_Texts']
-            # Professional orange header (#E67E22) to match tab color
-            header_fill = PatternFill(start_color='E67E22', end_color='E67E22', fill_type='solid')
-            header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
-            for cell in ws[1]:
-                cell.font = header_font
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-                cell.fill = header_fill
-            ws.freeze_panes = 'B2'
-            
-            # Optimized column widths for MDR_Texts
-            for col in ws.columns:
-                col_letter = get_column_letter(col[0].column)
-                col_name = col[0].value
-                
-                # Smart width based on column content type
-                if col_name and 'event_id' in col_name.lower():
-                    # Event ID: 12px width (compact for IDs)
-                    ws.column_dimensions[col_letter].width = 12
-                elif col_name and 'text_type_code' in col_name.lower():
-                    # Text Type Code: 15px width (short codes)
-                    ws.column_dimensions[col_letter].width = 15
-                # MDR Text Key column removed - no longer needed
-                elif col_name and 'maude_report_link' in col_name.lower():
-                    # MAUDE Report Link: 35px width (URLs need more space)
-                    ws.column_dimensions[col_letter].width = 35
-                elif col_name and 'text' in col_name.lower():
-                    # Text content: 50px width (long text content)
-                    ws.column_dimensions[col_letter].width = 50
-                else:
-                    # Default: calculate optimal width
-                    max_length = 0
-                    for cell in col:
-                        try:
-                            if cell.value:
-                                max_length = max(max_length, len(str(cell.value)))
-                        except:
-                            pass
-                    ws.column_dimensions[col_letter].width = max(12, min(max_length + 1, 30))
-            fill1 = PatternFill(start_color='F7F7F7', end_color='F7F7F7', fill_type='solid')
-            fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
-            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
-                fill = fill1 if i % 2 == 0 else fill2
-                for cell in row:
-                    cell.fill = fill
-            thin = Side(border_style="thin", color="BBBBBB")
-            border = Border(left=thin, right=thin, top=thin, bottom=thin)
-            for row in ws.iter_rows():
-                for cell in row:
-                    cell.border = border
+
         wb.save(filename)
         
         # Memory cleanup after all processing is complete
