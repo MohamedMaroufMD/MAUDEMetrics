@@ -753,228 +753,293 @@ def export_to_excel(include_raw_events=True):
                     else:
                         log_export_message("Skipping Raw_Events sheet for better performance...")
                         print("Skipping Raw_Events sheet for better performance...")
-                    # --- Restore main_fields_df construction ---
-                    main_fields_cols = []
-                    for field in main_fields:
-                        # Find all columns in events_flat_df that start with this field name (robust: any suffix)
-                        matching_cols = [col for col in events_flat_df.columns if col == field or col.startswith(field + '_')]
-                        main_fields_cols.extend(matching_cols)
-                    # Add any extra columns not in main_fields_cols
-                    extra_cols = [col for col in events_flat_df.columns if col not in main_fields_cols]
-                    main_fields_df = events_flat_df[main_fields_cols + extra_cols]
-                    main_fields_df = format_all_date_columns(main_fields_df)
+                
+                # --- ALWAYS CREATE EVENTS SHEET (moved outside conditional block) ---
+                # --- Restore main_fields_df construction ---
+                main_fields_cols = []
+                for field in main_fields:
+                    # Find all columns in events_flat_df that start with this field name (robust: any suffix)
+                    matching_cols = [col for col in events_flat_df.columns if col == field or col.startswith(field + '_')]
+                    main_fields_cols.extend(matching_cols)
+                # Add any extra columns not in main_fields_cols
+                extra_cols = [col for col in events_flat_df.columns if col not in main_fields_cols]
+                main_fields_df = events_flat_df[main_fields_cols + extra_cols]
+                main_fields_df = format_all_date_columns(main_fields_df)
+                
+                # Remove completely blank columns (no data except header)
+                # BUT NEVER remove essential columns like event_id
+                essential_columns = ['event_id', 'id', 'report_number']
+                blank_cols = []
+                for col in main_fields_df.columns:
+                    # Never remove essential columns
+                    if col in essential_columns:
+                        continue
                     
-                    # Remove completely blank columns (no data except header)
-                    blank_cols = []
-                    for col in main_fields_df.columns:
-                        # Check if the column has any non-blank data (excluding header)
-                        has_data = False
-                        for val in main_fields_df[col]:
-                            # Check for actual data (not NaN, None, empty string, or whitespace)
-                            if pd.notna(val) and val is not None and str(val).strip() != '':
-                                has_data = True
-                                break
-                        if not has_data:
-                            blank_cols.append(col)
-                    
-                    # Remove columns with no data
-                    if blank_cols:
-                        print(f"Removing {len(blank_cols)} blank columns from Events: {blank_cols}")
-                        main_fields_df = main_fields_df.drop(columns=blank_cols)
-                    
-                    # Enhanced humanize function for professional column naming
-                    def enhanced_humanize(col):
-                        if not isinstance(col, str):
-                            return col
-                        field_mapping = {
-                            'event_id': 'Event ID',
-                            'report_number': 'Report Number',
-                            'mdr_report_key': 'MDR Report Key',
-                            'maude_report_link': 'MAUDE Report Link',
-                            'date_of_event': 'Event Date',
-                            'date_report': 'Report Date',
-                            'date_received': 'Date Received',
-                            'date_manufacturer_received': 'Date Manufacturer Received',
-                            'device_date_received': 'Device Date Received',
-                            'device_expiration_date_of_device': 'Device Expiration Date',
-                            'patient_date_received': 'Patient Date Received',
-                            'device_generic_name': 'Product Class',
-                            'device_brand_name': 'Brand Name',
-                            'device_manufacturer_d_name': 'Manufacturer',
-                            'device_device_report_product_code': 'Product Code',
-                            'device_model_number': 'Model Number',
-                            'device_catalog_number': 'Catalog Number',
-                            'device_lot_number': 'Lot Number',
-                            'device_device_availability': 'Device Availability',
-                            'device_device_evaluated_by_manufacturer': 'Device Evaluated By Manufacturer',
-                            'device_manufacturer_d_country': 'Manufacturer Country',
-                            'single_use_flag': 'Single Use Flag',
-                            'reprocessed_and_reused_flag': 'Reprocessed And Reused Flag',
-                            'device_device_operator': 'Device Operator',
-                            'report_source_code': 'Report Source Code',
-                            'health_professional': 'Health Professional',
-                            'reporter_occupation_code': 'Reporter Occupation Code',
-                            'source_type': 'Source Type',
-                            'patient_patient_age': 'Patient Age',
-                            'patient_patient_sex': 'Patient Sex',
-                            'patient_patient_weight': 'Patient Weight',
-                            'patient_patient_ethnicity': 'Patient Ethnicity',
-                            'patient_patient_race': 'Patient Race',
-                            'event_type': 'Event Type',
-                            'adverse_event_flag': 'Adverse Event Flag',
-                            'patient_patient_problems': 'Patient Problem',
-                            'patient_sequence_number_outcome': 'Patient Outcome',
-                            'patient_sequence_number_treatment': 'Patient Treatment',
-                            'product_problem_flag': 'Product Problem Flag',
-                            'product_problems': 'Device Problem',
-                            'date_report_to_fda': 'Date Report To FDA',
-                            'date_report_to_manufacturer': 'Date Report To Manufacturer'
-                        }
-                        if col in field_mapping:
-                            return field_mapping[col]
-                        # Handle array fields with numbers
-                        if '_' in col and col[-1].isdigit():
-                            base_field = col.rsplit('_', 1)[0]
-                            number = col.rsplit('_', 1)[1]
-                            if base_field in field_mapping:
-                                return f"{field_mapping[base_field]} {number}"
-                            # Handle special cases for nested array fields - clean up the naming
-                            elif base_field.endswith('_1') and base_field[:-2] in field_mapping:
-                                base_base_field = base_field[:-2]
-                                # Clean up nested array naming (e.g., "Patient Patient Problems 1 1" -> "Patient Problem 1")
-                                if base_base_field == 'patient_patient_problems':
-                                    return f"Patient Problem {number}"
-                                elif base_base_field == 'patient_sequence_number_outcome':
-                                    return f"Patient Outcome {number}"
-                                elif base_base_field == 'patient_sequence_number_treatment':
-                                    return f"Patient Treatment {number}"
-                                else:
-                                    return f"{field_mapping[base_base_field]} {number}"
-                        return col.replace('_', ' ').replace('.', ' ').title()
-                    
-                    # Apply enhanced column naming
-                    main_fields_df.columns = [enhanced_humanize(c) for c in main_fields_df.columns]
-                    
-                    # Intelligent column reordering for Events sheet
-                    # Define base priority order (without array numbers)
-                    base_priority_order = [
-                        'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
-                        'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
-                        'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Catalog Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
-                        'Adverse Event Flag', 'Product Problem Flag', 'Device Problem', 'Patient Problem', 'Patient Outcome', 'Patient Treatment',
-                        'Description of Event or Problem', 'Additional Manufacturer Narrative', 'Other MDR Text'
-                    ]
-                    
-                    # Build complete priority columns maintaining original position order
-                    priority_columns = []
-                    for base_field in base_priority_order:
-                        # Add the base field first (if it exists in the dataframe)
-                        if base_field in main_fields_df.columns:
-                            priority_columns.append(base_field)
-                        
-                        # Add all numbered variations of this field in sequence
-                        for i in range(1, 50):  # Support up to 49 array elements
-                            numbered_field = f"{base_field} {i}"
-                            if numbered_field in main_fields_df.columns:
-                                priority_columns.append(numbered_field)
-                        
-                        # Handle nested array fields (e.g., "Patient Problems 1 1", "Patient Problems 1 2", etc.)
-                        # These come from nested structures like patient.patient_problems
-                        for i in range(1, 50):  # First level array
-                            for j in range(1, 50):  # Second level array
-                                nested_field = f"{base_field} {i} {j}"
-                                if nested_field in main_fields_df.columns:
-                                    priority_columns.append(nested_field)
-                        
-                        # Continue to next base field (arrays maintain their position in sequence)
-                    
-                    # Reorder columns: priority columns first, then others
-                    available_priority_cols = [col for col in priority_columns if col in main_fields_df.columns]
-                    other_cols = [col for col in main_fields_df.columns if col not in available_priority_cols]
-                    reordered_cols = available_priority_cols + other_cols
-                    
-                    # Apply reordering
-                    main_fields_df = main_fields_df[reordered_cols]
-                    
-                    # FDA Code Analysis removed for cleaner output
-                    
-                    # Apply FDA code translation for user-friendly display
-                    main_fields_df = translate_fda_codes(main_fields_df)
-                    
-                    # 2. MDR TEXTS - Integrate into Events sheet BEFORE writing to Excel
-                    mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
-                    mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
-                    
-                    # Process MDR texts to add to Events sheet
-                    if not mdr_texts_df.empty:
-                        log_export_message("Processing MDR texts for Events sheet integration...")
-                        
-                        # Group MDR texts by event_id and text_type_code
-                        mdr_texts_grouped = {}
-                        for _, row in mdr_texts_df.iterrows():
-                            event_id = int(row['event_id'])  # Ensure it's an integer
-                            text_type_code = row['text_type_code']
-                            text = row['text']
-                            
-                            # Handle missing or null text_type_code
-                            if pd.isna(text_type_code) or text_type_code is None or text_type_code == '':
-                                text_type_code = 'Other MDR Text'
-                            
-                            if event_id not in mdr_texts_grouped:
-                                mdr_texts_grouped[event_id] = {}
-                            
-                            if text_type_code not in mdr_texts_grouped[event_id]:
-                                mdr_texts_grouped[event_id][text_type_code] = []
-                            
-                            mdr_texts_grouped[event_id][text_type_code].append(text)
-                        
-                        # Add MDR text columns to main_fields_df
-                        # Priority: "Description of Event or Problem" first, then "Additional Manufacturer Narrative", then "Other MDR Text"
-                        mdr_text_columns = []
-                        manufacturer_narrative_columns = []
-                        other_mdr_text_columns = []
-                        
-                        for event_id in main_fields_df['Event ID']:
-                            event_id_int = int(event_id)  # Ensure it's an integer for matching
-                            event_mdr_texts = mdr_texts_grouped.get(event_id_int, {})
-                            
-                            # Get "Description of Event or Problem" (using actual text_type_code from data)
-                            event_description = event_mdr_texts.get('Description of Event or Problem', [])
-                            if event_description:
-                                mdr_text_columns.append('; '.join(event_description))
+                    # Check if the column has any non-blank data (excluding header)
+                    has_data = False
+                    for val in main_fields_df[col]:
+                        # Check for actual data (not NaN, None, empty string, or whitespace)
+                        if pd.notna(val) and val is not None and str(val).strip() != '':
+                            has_data = True
+                            break
+                    if not has_data:
+                        blank_cols.append(col)
+                
+                # Remove columns with no data
+                if blank_cols:
+                    print(f"Removing {len(blank_cols)} blank columns from Custom_Events: {blank_cols}")
+                    main_fields_df = main_fields_df.drop(columns=blank_cols)
+                
+                # Enhanced humanize function for professional column naming
+                def enhanced_humanize(col):
+                    if not isinstance(col, str):
+                        return col
+                    field_mapping = {
+                        'event_id': 'Event ID',
+                        'report_number': 'Report Number',
+                        'mdr_report_key': 'MDR Report Key',
+                        'maude_report_link': 'MAUDE Report Link',
+                        'date_of_event': 'Event Date',
+                        'date_report': 'Report Date',
+                        'date_received': 'Date Received',
+                        'date_manufacturer_received': 'Date Manufacturer Received',
+                        'device_date_received': 'Device Date Received',
+                        'device_expiration_date_of_device': 'Device Expiration Date',
+                        'patient_date_received': 'Patient Date Received',
+                        'device_generic_name': 'Product Class',
+                        'device_brand_name': 'Brand Name',
+                        'device_manufacturer_d_name': 'Manufacturer',
+                        'device_device_report_product_code': 'Product Code',
+                        'device_model_number': 'Model Number',
+                        'device_catalog_number': 'Catalog Number',
+                        'device_lot_number': 'Lot Number',
+                        'device_device_availability': 'Device Availability',
+                        'device_device_evaluated_by_manufacturer': 'Device Evaluated By Manufacturer',
+                        'device_manufacturer_d_country': 'Manufacturer Country',
+                        'single_use_flag': 'Single Use Flag',
+                        'reprocessed_and_reused_flag': 'Reprocessed And Reused Flag',
+                        'device_device_operator': 'Device Operator',
+                        'report_source_code': 'Report Source Code',
+                        'health_professional': 'Health Professional',
+                        'reporter_occupation_code': 'Reporter Occupation Code',
+                        'source_type': 'Source Type',
+                        'patient_patient_age': 'Patient Age',
+                        'patient_patient_sex': 'Patient Sex',
+                        'patient_patient_weight': 'Patient Weight',
+                        'patient_patient_ethnicity': 'Patient Ethnicity',
+                        'patient_patient_race': 'Patient Race',
+                        'event_type': 'Event Type',
+                        'adverse_event_flag': 'Adverse Event Flag',
+                        'patient_patient_problems': 'Patient Problem',
+                        'patient_sequence_number_outcome': 'Patient Outcome',
+                        'patient_sequence_number_treatment': 'Patient Treatment',
+                        'product_problem_flag': 'Product Problem Flag',
+                        'product_problems': 'Device Problem',
+                        'date_report_to_fda': 'Date Report To FDA',
+                        'date_report_to_manufacturer': 'Date Report To Manufacturer',
+                        # MDR Text specific mappings
+                        'Description_of_Event_or_Problem': 'Description of Event or Problem',
+                        'Additional_Manufacturer_Narrative': 'Additional Manufacturer Narrative'
+                    }
+                    if col in field_mapping:
+                        return field_mapping[col]
+                    # Handle array fields with numbers
+                    if '_' in col and col[-1].isdigit():
+                        base_field = col.rsplit('_', 1)[0]
+                        number = col.rsplit('_', 1)[1]
+                        if base_field in field_mapping:
+                            return f"{field_mapping[base_field]} {number}"
+                        # Handle special cases for nested array fields - clean up the naming
+                        elif base_field.endswith('_1') and base_field[:-2] in field_mapping:
+                            base_base_field = base_field[:-2]
+                            # Clean up nested array naming (e.g., "Patient Patient Problems 1 1" -> "Patient Problem 1")
+                            if base_base_field == 'patient_patient_problems':
+                                return f"Patient Problem {number}"
+                            elif base_base_field == 'patient_sequence_number_outcome':
+                                return f"Patient Outcome {number}"
+                            elif base_base_field == 'patient_sequence_number_treatment':
+                                return f"Patient Treatment {number}"
                             else:
-                                mdr_text_columns.append('')
-                            
-                            # Get "Additional Manufacturer Narrative" (using actual text_type_code from data)
-                            manufacturer_narrative = event_mdr_texts.get('Additional Manufacturer Narrative', [])
-                            if manufacturer_narrative:
-                                manufacturer_narrative_columns.append('; '.join(manufacturer_narrative))
-                            else:
-                                manufacturer_narrative_columns.append('')
-                            
-                            # Get "Other MDR Text" (texts with missing or unknown text_type_code)
-                            other_mdr_text = event_mdr_texts.get('Other MDR Text', [])
-                            if other_mdr_text:
-                                other_mdr_text_columns.append('; '.join(other_mdr_text))
-                            else:
-                                other_mdr_text_columns.append('')
-                        
-                        # Add "Description of Event or Problem" column
-                        main_fields_df['Description of Event or Problem'] = mdr_text_columns
-                        
-                        # Add "Additional Manufacturer Narrative" column
-                        main_fields_df['Additional Manufacturer Narrative'] = manufacturer_narrative_columns
-                        
-                        # Add "Other MDR Text" column (only if there are any)
-                        if any(other_mdr_text_columns):
-                            main_fields_df['Other MDR Text'] = other_mdr_text_columns
-                        
-                        log_export_message("MDR texts integrated into Events sheet")
-                    else:
-                        log_export_message("No MDR texts found to integrate")
+                                return f"{field_mapping[base_base_field]} {number}"
+                        # Handle MDR text numbered columns
+                        elif base_field in ['Description_of_Event_or_Problem', 'Additional_Manufacturer_Narrative']:
+                            if base_field == 'Description_of_Event_or_Problem':
+                                return f"Description of Event or Problem {number}"
+                            elif base_field == 'Additional_Manufacturer_Narrative':
+                                return f"Additional Manufacturer Narrative {number}"
+                    return col.replace('_', ' ').replace('.', ' ').title()
+                
+                # Apply enhanced column naming
+                main_fields_df.columns = [enhanced_humanize(c) for c in main_fields_df.columns]
+                
+                # Intelligent column reordering for Custom_Events sheet
+                # Define base priority order (without array numbers)
+                base_priority_order = [
+                    'Event ID', 'Report Number', 'MDR Report Key', 'MAUDE Report Link', 'Event Date', 'Report Date', 'Date Received',
+                    'Date Report To FDA', 'Date Report To Manufacturer', 'Date Manufacturer Received', 'Device Date Received', 'Device Expiration Date', 'Patient Date Received',
+                    'Product Class', 'Brand Name', 'Product Code', 'Model Number', 'Manufacturer', 'Manufacturer Country', 'Lot Number', 'Catalog Number', 'Device Availability', 'Device Evaluated By Manufacturer', 'Single Use Flag', 'Reprocessed And Reused Flag', 'Device Operator', 'Report Source Code', 'Health Professional', 'Reporter Occupation Code', 'Source Type', 'Patient Age', 'Patient Sex', 'Patient Weight', 'Patient Ethnicity', 'Patient Race', 'Event Type',
+                    'Adverse Event Flag', 'Product Problem Flag', 'Device Problem', 'Patient Problem', 'Patient Outcome', 'Patient Treatment'
+                ]
+                
+                # Build complete priority columns maintaining original position order
+                priority_columns = []
+                for base_field in base_priority_order:
+                    # Add the base field first (if it exists in the dataframe)
+                    if base_field in main_fields_df.columns:
+                        priority_columns.append(base_field)
                     
-                    log_export_message(f"Writing Events sheet to Excel ({len(main_fields_df):,} rows)...")
-                    main_fields_df.to_excel(writer, sheet_name='Events', index=False)
+                    # Add all numbered variations of this field in sequence
+                    for i in range(1, 50):  # Support up to 49 array elements
+                        numbered_field = f"{base_field} {i}"
+                        if numbered_field in main_fields_df.columns:
+                            priority_columns.append(numbered_field)
+                    
+                    # Handle nested array fields (e.g., "Patient Problems 1 1", "Patient Problems 1 2", etc.)
+                    # These come from nested structures like patient.patient_problems
+                    for i in range(1, 50):  # First level array
+                        for j in range(1, 50):  # Second level array
+                            nested_field = f"{base_field} {i} {j}"
+                            if nested_field in main_fields_df.columns:
+                                priority_columns.append(nested_field)
+                    
+                    # Continue to next base field (arrays maintain their position in sequence)
+                
+                # Reorder columns: priority columns first, then others
+                available_priority_cols = [col for col in priority_columns if col in main_fields_df.columns]
+                other_cols = [col for col in main_fields_df.columns if col not in available_priority_cols]
+                reordered_cols = available_priority_cols + other_cols
+                
+                # Apply reordering
+                main_fields_df = main_fields_df[reordered_cols]
+                
+                # FDA Code Analysis removed for cleaner output
+                
+                # Apply FDA code translation for user-friendly display
+                main_fields_df = translate_fda_codes(main_fields_df)
+                
+                # INTEGRATE MDR TEXTS INTO EVENTS SHEET
+                log_export_message("Integrating MDR texts into Events sheet...")
+                
+                # Get MDR texts data
+                mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
+                mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
+                
+                # Create MDR text columns for each event
+                mdr_text_columns = {}
+                
+                # Get all unique event IDs from the main events DataFrame
+                # Try different possible column names for event ID
+                event_id_col = None
+                for col_name in ['event_id', 'id', 'Event ID', 'ID']:
+                    if col_name in main_fields_df.columns:
+                        event_id_col = col_name
+                        break
+                
+                if event_id_col is None:
+                    raise Exception("No event ID column found in main_fields_df")
+                
+                all_event_ids = main_fields_df[event_id_col].unique()
+                
+                for event_id in all_event_ids:
+                    # Get all MDR texts for this event
+                    event_mdr_texts = mdr_texts_df[mdr_texts_df['event_id'] == event_id]
+                    
+                    # Initialize text columns for this event
+                    event_mdr_data = {}
+                    
+                    # Track count of each text type for numbering
+                    text_counts = {}
+                    
+                    for _, mdr_row in event_mdr_texts.iterrows():
+                        text_type = mdr_row['text_type_code']
+                        text_content = sanitize_text(mdr_row['text'])  # Sanitize to prevent Excel cell size limits
+                        # Convert to normal case (not all caps) for better readability
+                        if text_content and text_content.isupper():
+                            # Only convert if text is all uppercase, preserve mixed case
+                            text_content = text_content.capitalize()
+                        
+                        if text_type == 'Description of Event or Problem':
+                            if text_counts.get('Description_of_Event_or_Problem', 0) == 0:
+                                # First occurrence - use the main column
+                                event_mdr_data['Description_of_Event_or_Problem'] = text_content
+                            else:
+                                # Additional occurrences - create numbered column
+                                col_name = f'Description_of_Event_or_Problem_{text_counts["Description_of_Event_or_Problem"] + 1}'
+                                event_mdr_data[col_name] = text_content
+                            text_counts['Description_of_Event_or_Problem'] = text_counts.get('Description_of_Event_or_Problem', 0) + 1
+                            
+                        elif text_type == 'Additional Manufacturer Narrative':
+                            if text_counts.get('Additional_Manufacturer_Narrative', 0) == 0:
+                                # First occurrence - use the main column
+                                event_mdr_data['Additional_Manufacturer_Narrative'] = text_content
+                            else:
+                                # Additional occurrences - create numbered column
+                                col_name = f'Additional_Manufacturer_Narrative_{text_counts["Additional_Manufacturer_Narrative"] + 1}'
+                                event_mdr_data[col_name] = text_content
+                            text_counts['Additional_Manufacturer_Narrative'] = text_counts.get('Additional_Manufacturer_Narrative', 0) + 1
+                            
+                        else:
+                            # Handle any other text types by adding them as additional columns
+                            clean_text_type = text_type.replace(' ', '_').replace('-', '_').replace('(', '').replace(')', '')
+                            if clean_text_type not in text_counts:
+                                text_counts[clean_text_type] = 0
+                                event_mdr_data[clean_text_type] = text_content
+                            else:
+                                # Additional occurrences - create numbered column
+                                text_counts[clean_text_type] += 1
+                                col_name = f'{clean_text_type}_{text_counts[clean_text_type]}'
+                                event_mdr_data[col_name] = text_content
+                    
+                    mdr_text_columns[event_id] = event_mdr_data
+                
+                # Get all unique MDR text column names across all events
+                all_mdr_columns = set()
+                for event_data in mdr_text_columns.values():
+                    all_mdr_columns.update(event_data.keys())
+                
+                # Sort MDR columns for consistent ordering with Description columns first
+                mdr_column_list = []
+                
+                # First, add all "Description of Event or Problem" columns (main + numbered)
+                desc_cols = [col for col in all_mdr_columns if col.startswith('Description_of_Event_or_Problem')]
+                desc_cols.sort(key=lambda x: (x != 'Description_of_Event_or_Problem', 
+                                            int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 0))
+                mdr_column_list.extend(desc_cols)
+                
+                # Then, add all "Additional Manufacturer Narrative" columns (main + numbered)
+                narrative_cols = [col for col in all_mdr_columns if col.startswith('Additional_Manufacturer_Narrative')]
+                narrative_cols.sort(key=lambda x: (x != 'Additional_Manufacturer_Narrative', 
+                                                 int(x.split('_')[-1]) if x.split('_')[-1].isdigit() else 0))
+                mdr_column_list.extend(narrative_cols)
+                
+                # Finally, add any other MDR text type columns
+                other_mdr_cols = [col for col in all_mdr_columns if col not in mdr_column_list]
+                other_mdr_cols.sort()
+                mdr_column_list.extend(other_mdr_cols)
+                
+                # Add MDR text columns to the main DataFrame
+                for col_name in mdr_column_list:
+                    main_fields_df[col_name] = ''
+                
+                # Fill in the MDR text data
+                for idx, row in main_fields_df.iterrows():
+                    event_id = row[event_id_col]
+                    if event_id in mdr_text_columns:
+                        for col_name, text_content in mdr_text_columns[event_id].items():
+                            main_fields_df.at[idx, col_name] = text_content
+                
+                # Apply enhanced column naming for MDR text columns
+                column_mapping = {}
+                for col in main_fields_df.columns:
+                    if col in mdr_column_list:
+                        column_mapping[col] = enhanced_humanize(col)
+                
+                main_fields_df = main_fields_df.rename(columns=column_mapping)
+                
+                log_export_message(f"Writing Events sheet to Excel with integrated MDR texts ({len(main_fields_df):,} rows)...")
+                main_fields_df.to_excel(writer, sheet_name='Events', index=False)
+                
+                # MDR TEXTS NOW INTEGRATED INTO EVENTS SHEET - NO SEPARATE SHEET NEEDED
                 # --- Improved All-in-One Summary Sheet ---
                 summary_blocks = []
                 # 1. Total Reports
@@ -1183,16 +1248,23 @@ def export_to_excel(include_raw_events=True):
         from openpyxl.styles import Font, PatternFill, Alignment, Side, Border
         from openpyxl.utils import get_column_letter
         wb = load_workbook(filename)
-        # Ensure all main sheets are visible
+        
+        # Check if we have any sheets at all
+        if not wb.sheetnames:
+            raise Exception("No sheets were created in the Excel file")
+        
+        # Ensure all main sheets are visible (only if they exist)
         for sheet_name in ['Events', 'Summary']:
             if sheet_name in wb.sheetnames:
                 wb[sheet_name].sheet_state = 'visible'
-        # Reorder sheets using openpyxl's move_sheet
+        
+        # Reorder sheets using openpyxl's move_sheet (only if they exist)
         desired_order = ['Events', 'Summary']
         for idx, sheet_name in enumerate(desired_order):
             if sheet_name in wb.sheetnames:
                 wb.move_sheet(wb[sheet_name], offset=idx - wb.sheetnames.index(sheet_name))
-        # Color sheet tabs
+        
+        # Color sheet tabs (only if they exist)
         tab_colors = {
             'Events': '1072BA',       # Blue
             'Summary': '27AE60'       # Green
@@ -1239,6 +1311,9 @@ def export_to_excel(include_raw_events=True):
                 elif col_name and any(link_word in col_name.lower() for link_word in ['link', 'url']):
                     # Link columns: 30px width (shows URL structure)
                     ws.column_dimensions[col_letter].width = 30
+                elif col_name and any(mdr_text_word in col_name.lower() for mdr_text_word in ['description_of_event_or_problem', 'additional_manufacturer_narrative']):
+                    # MDR text columns: 60px width (long descriptive text)
+                    ws.column_dimensions[col_letter].width = 60
                 elif col_name and any(text_word in col_name.lower() for text_word in ['text', 'description', 'problems', 'outcome', 'treatment']):
                     # Long text columns: 25px width (for detailed content)
                     ws.column_dimensions[col_letter].width = 25
@@ -1248,9 +1323,6 @@ def export_to_excel(include_raw_events=True):
                 elif col_name and any(flag_word in col_name.lower() for flag_word in ['flag']):
                     # Flag columns: 16px width (good for short categorical data)
                     ws.column_dimensions[col_letter].width = 16
-                elif col_name and any(mdr_word in col_name.lower() for mdr_word in ['description of event', 'additional manufacturer narrative', 'other mdr text']):
-                    # MDR text columns: 25px width (for detailed narrative content)
-                    ws.column_dimensions[col_letter].width = 25
                 else:
                     # Standard columns: 20px width (optimal for medium text)
                     ws.column_dimensions[col_letter].width = 20
@@ -1317,7 +1389,7 @@ def export_to_excel(include_raw_events=True):
                         demo_start = row[0].row
                         break
                 # Note: demo_table formatting removed as it's no longer used in the new Summary structure
-
+        # MDR_Texts sheet formatting removed - texts now integrated into Events sheet
         wb.save(filename)
         
         # Memory cleanup after all processing is complete
