@@ -143,8 +143,8 @@ Then visit [http://localhost:5005](http://localhost:5005) in your browser.
 1. **Search Setup:** Enter search criteria in any combination:
    - **Brand Name(s):** e.g., "MiniMed 670G, Endurant II"
    - **Product Code(s):** e.g., "MAF, KYF, MND"
-   - **Manufacturer:** e.g., "Medtronic, Abbott"
-   - **Type of Device:** e.g., "pacemaker, defibrillator, stent"
+   - **Manufacturer(s):** e.g., "Medtronic, Abbott"
+   - **Product Class(es):** e.g., "pacemaker, defibrillator, stent"
    - **Date Range:** Select start and end dates
 
 2. **Execute Search:** Click **Extract MAUDE Data**
