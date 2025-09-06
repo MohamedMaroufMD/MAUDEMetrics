@@ -21,7 +21,7 @@ authors:
 affiliations:
   - name: Faculty of Medicine, Mansoura University, Mansoura, Egypt
     index: 1
-date: 2025-01-XX
+date: 2025-09-05
 bibliography: paper.bib
 ---
 

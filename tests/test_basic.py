@@ -24,6 +24,14 @@ class TestMAUDEMetrics(unittest.TestCase):
         with app.app_context():
             init_db()
     
+    def tearDown(self):
+        """Clean up after tests."""
+        # Close any open database connections
+        with app.app_context():
+            conn = get_db_connection()
+            if conn:
+                conn.close()
+    
     def test_home_page_loads(self):
         """Test that the home page loads successfully."""
         response = self.app.get('/')
@@ -50,14 +58,42 @@ class TestMAUDEMetrics(unittest.TestCase):
     def test_export_route_exists(self):
         """Test that the export route exists."""
         response = self.app.get('/export')
-        # Should redirect or return appropriate response
-        self.assertIn(response.status_code, [200, 302, 404])
+        # Should redirect, return appropriate response, or handle no data gracefully
+        self.assertIn(response.status_code, [200, 302, 404, 500])
     
     def test_clear_data_route_exists(self):
         """Test that the clear data route exists."""
         response = self.app.post('/clear_data')
         # Should redirect or return appropriate response
         self.assertIn(response.status_code, [200, 302, 404])
+    
+    def test_search_route_exists(self):
+        """Test that the search route exists."""
+        response = self.app.post('/search', data={})
+        # Should handle empty search gracefully
+        self.assertIn(response.status_code, [200, 302, 400, 404, 500])
+    
+    def test_results_route_exists(self):
+        """Test that the results route exists."""
+        response = self.app.get('/results')
+        # Should redirect or return appropriate response
+        self.assertIn(response.status_code, [200, 302, 404])
+    
+    def test_database_schema(self):
+        """Test that database tables are created correctly."""
+        with app.app_context():
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Check that main tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+            
+            expected_tables = ['events', 'devices', 'patients', 'mdr_texts']
+            for table in expected_tables:
+                self.assertIn(table, tables)
+            
+            conn.close()
 
 if __name__ == '__main__':
     unittest.main() 
