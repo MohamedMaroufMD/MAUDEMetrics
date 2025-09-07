@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.2 20190208//EN"
+                  "JATS-publishing1.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" dtd-version="1.2" article-type="other">
+<front>
+<journal-meta>
+<journal-id></journal-id>
+<journal-title-group>
+<journal-title>Journal of Open Source Software</journal-title>
+<abbrev-journal-title>JOSS</abbrev-journal-title>
+</journal-title-group>
+<issn publication-format="electronic">2475-9066</issn>
+<publisher>
+<publisher-name>Open Journals</publisher-name>
+</publisher>
+</journal-meta>
+<article-meta>
+<article-id pub-id-type="publisher-id">0</article-id>
+<article-id pub-id-type="doi">N/A</article-id>
+<title-group>
+<article-title>MAUDEMetrics: Automated extraction and comprehensive
+analysis of FDA MAUDE device safety data</article-title>
+</title-group>
+<contrib-group>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0001-7480-371X</contrib-id>
+<name>
+<surname>Marouf</surname>
+<given-names>Mohamed</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<aff id="aff-1">
+<institution-wrap>
+<institution>Faculty of Medicine, Mansoura University, Mansoura,
+Egypt</institution>
+</institution-wrap>
+</aff>
+</contrib-group>
+<pub-date date-type="pub" publication-format="electronic" iso-8601-date="2025-09-08">
+<day>8</day>
+<month>9</month>
+<year>2025</year>
+</pub-date>
+<volume>¿VOL?</volume>
+<issue>¿ISSUE?</issue>
+<fpage>¿PAGE?</fpage>
+<permissions>
+<copyright-statement>Authors of papers retain copyright and release the
+work under a Creative Commons Attribution 4.0 International License (CC
+BY 4.0)</copyright-statement>
+<copyright-year>1970</copyright-year>
+<copyright-holder>The article authors</copyright-holder>
+<license license-type="open-access" xlink:href="https://creativecommons.org/licenses/by/4.0/">
+<license-p>Authors of papers retain copyright and release the work under
+a Creative Commons Attribution 4.0 International License (CC BY
+4.0)</license-p>
+</license>
+</permissions>
+<kwd-group kwd-group-type="author">
+<kwd>medical devices</kwd>
+<kwd>FDA</kwd>
+<kwd>MAUDE database</kwd>
+<kwd>adverse events</kwd>
+<kwd>safety analysis</kwd>
+<kwd>openFDA API</kwd>
+<kwd>Python</kwd>
+<kwd>Flask</kwd>
+<kwd>data extraction</kwd>
+<kwd>healthcare analytics</kwd>
+<kwd>regulatory science</kwd>
+<kwd>postmarket surveillance</kwd>
+<kwd>health informatics</kwd>
+<kwd>reproducible research</kwd>
+<kwd>clinical safety</kwd>
+</kwd-group>
+</article-meta>
+</front>
+<body>
+<sec id="summary">
+  <title>Summary</title>
+  <p>Monitoring medical device safety is critical for patient safety and
+  regulatory compliance.
+  The FDA’s Manufacturer and User Facility Device Experience (MAUDE)
+  database contains over 22 million adverse event reports and remains a
+  primary source for postmarket surveillance
+  (<xref alt="U.S. Food and Drug Administration, 2025" rid="ref-fda_maude" ref-type="bibr">U.S.
+  Food and Drug Administration, 2025</xref>).
+  The FDA receives several hundred thousand new medical device reports
+  annually, which are accessible via the openFDA Device Event API
+  (<xref alt="openFDA, 2025" rid="ref-openfda_api" ref-type="bibr">openFDA,
+  2025</xref>).</p>
+  <p>However, practical use of this database is constrained by the API’s
+  1,000-record pagination limit, the FDA website’s 500-record export
+  restriction (with missing demographic fields), and the need for
+  significant technical expertise to aggregate and analyze reports.
+  These barriers make comprehensive device safety analysis difficult,
+  time-consuming, and error-prone.</p>
+  <p><bold>MAUDEMetrics</bold> is a Python-based web application that
+  democratizes access to MAUDE data by automating extraction,
+  aggregation, and analysis of adverse event reports via the openFDA
+  API.
+  It provides an intuitive web interface, requires no programming
+  expertise, and supports complex queries across brand names, product
+  codes, manufacturers, and date ranges.
+  The tool automatically handles API pagination, validates and
+  standardizes fields, and produces professional multi-sheet Excel
+  exports with raw data, cleaned datasets, and statistical
+  summaries.</p>
+  <p>By reducing analysis time from hours to minutes, MAUDEMetrics
+  enhances reproducibility, efficiency, and accessibility of MAUDE data
+  for clinicians, researchers, quality assurance teams, and regulatory
+  professionals.</p>
+</sec>
+<sec id="statement-of-need">
+  <title>Statement of Need</title>
+  <p>Medical device safety analysis is essential for patient safety and
+  regulatory compliance, yet current MAUDE access methods impose
+  significant barriers:</p>
+  <list list-type="bullet">
+    <list-item>
+      <p><bold>API Limitations</bold>: The openFDA API restricts results
+      to 1,000 records per query, requiring complex iteration
+      (<xref alt="openFDA, 2025" rid="ref-openfda_api" ref-type="bibr">openFDA,
+      2025</xref>).
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>Web Interface Limitations</bold>: The MAUDE portal only
+      allows 500-record exports and omits essential fields such as
+      demographics
+      (<xref alt="U.S. Food and Drug Administration, 2025" rid="ref-fda_maude" ref-type="bibr">U.S.
+      Food and Drug Administration, 2025</xref>).
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>Manual Burden</bold>: Researchers must perform multiple
+      searches, downloads, and merges to assemble datasets.
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>Reproducibility Challenges</bold>: Manual extraction is
+      difficult to replicate and error-prone.</p>
+    </list-item>
+  </list>
+  <p><bold>MAUDEMetrics</bold> addresses these gaps by providing:</p>
+  <list list-type="bullet">
+    <list-item>
+      <p>An accessible, programming-free web interface
+      </p>
+    </list-item>
+    <list-item>
+      <p>Intelligent pagination to assemble complete datasets
+      </p>
+    </list-item>
+    <list-item>
+      <p>Multi-parameter search across brand names, product codes,
+      manufacturers, product classes, and date ranges</p>
+    </list-item>
+    <list-item>
+      <p>Automated cleaning and validation of &gt;100 FDA data fields
+      </p>
+    </list-item>
+    <list-item>
+      <p>Multi-sheet professional Excel exports with summaries
+      </p>
+    </list-item>
+    <list-item>
+      <p>Built-in visualization dashboard for event types and device
+      brands</p>
+    </list-item>
+    <list-item>
+      <p>Docker containerization for reproducible workflows</p>
+    </list-item>
+  </list>
+  <p>The software benefits clinical researchers, hospital QA teams,
+  regulatory professionals, and healthcare institutions conducting
+  device safety audits.</p>
+</sec>
+<sec id="implementation">
+  <title>Implementation</title>
+  <p>MAUDEMetrics is implemented as a <bold>Flask</bold> web application
+  (<xref alt="Flask Development Team, 2023" rid="ref-flask" ref-type="bibr">Flask
+  Development Team, 2023</xref>) that integrates directly with the
+  openFDA Device Event API.
+  The <monospace>fetch_all_API_data()</monospace> function automates API
+  pagination and error handling, while <bold>Pandas</bold>
+  (<xref alt="McKinney, 2010" rid="ref-mckinney2010" ref-type="bibr">McKinney,
+  2010</xref>) and <bold>NumPy</bold>
+  (<xref alt="NumPy Developers, 2023" rid="ref-numpy" ref-type="bibr">NumPy
+  Developers, 2023</xref>) perform data processing.
+  Data are cached locally in <bold>SQLite</bold>
+  (<xref alt="SQLite Development Team, 2023" rid="ref-sqlite" ref-type="bibr">SQLite
+  Development Team, 2023</xref>) for performance and persistence.</p>
+  <p>The export engine provides two complementary options for
+  researchers:</p>
+  <list list-type="bullet">
+    <list-item>
+      <p><bold>Raw Data Export</bold>: reports are saved as CSV files
+      that preserve the original JSON structure from the openFDA API,
+      ensuring no loss of information.
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>Processed Excel Export</bold>: using
+      <bold>OpenPyXL</bold>
+      (<xref alt="Clark, 2023" rid="ref-openpyxl" ref-type="bibr">Clark,
+      2023</xref>), the system generates multi-sheet Excel workbooks
+      with:</p>
+      <list list-type="bullet">
+        <list-item>
+          <p><bold>Events</bold>: cleaned and standardized event data
+          with integrated narratives
+          </p>
+        </list-item>
+        <list-item>
+          <p><bold>Summary</bold>: aggregated statistics of patient
+          demographics and event types</p>
+        </list-item>
+      </list>
+    </list-item>
+  </list>
+  <p>Deployment uses <bold>Docker</bold>
+  (<xref alt="Docker Inc., 2023" rid="ref-docker" ref-type="bibr">Docker
+  Inc., 2023</xref>) for reproducibility, and the web interface is
+  styled with Bootstrap 5.
+  Testing covers API integration, database operations, export
+  generation, and web routes, with a 100% pass rate.
+  Performance benchmarks show ~5,000 records extracted in under 30
+  seconds.</p>
+  <fig>
+    <caption><p>MAUDEMetrics Workflow</p></caption>
+    <p><named-content content-type="image">MAUDEMetrics
+    Workflow</named-content></p>
+  </fig>
+  <p><italic>Figure 1: MAUDEMetrics architecture and workflow. User
+  input via the web interface triggers Flask endpoints that query the
+  openFDA API (with pagination), cache results in SQLite, and process
+  data with Pandas. The system supports two export modes: raw CSV files
+  that preserve the original FDA JSON structure, and processed Excel
+  workbooks (via OpenPyXL) with cleaned datasets and summary statistics.
+  Docker ensures reproducible deployment.</italic></p>
+</sec>
+<sec id="use-cases-and-impact">
+  <title>Use Cases and Impact</title>
+  <p><bold>Research</bold>:
+  - Aggregate device-specific adverse events for systematic reviews
+  - Compare event rates across manufacturers
+  - Conduct temporal trend analyses</p>
+  <p><bold>Clinical Quality Assurance</bold>:
+  - Monitor devices used within an institution
+  - Detect emerging safety signals
+  - Generate reproducible safety reports</p>
+  <p><bold>Regulatory</bold>:
+  - Support FDA submissions with structured evidence
+  - Standardize postmarket surveillance workflows</p>
+  <p>By automating extraction and standardizing outputs, MAUDEMetrics
+  reduces manual effort, minimizes transcription errors, and enables
+  reproducible device safety investigations.</p>
+</sec>
+<sec id="software-availability">
+  <title>Software Availability</title>
+  <list list-type="bullet">
+    <list-item>
+      <p><bold>Name</bold>: MAUDEMetrics
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>Repository</bold>:
+      <ext-link ext-link-type="uri" xlink:href="https://github.com/MohamedMaroufMD/MAUDEMetrics">https://github.com/MohamedMaroufMD/MAUDEMetrics</ext-link>
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>DOI</bold>:
+      <ext-link ext-link-type="uri" xlink:href="https://doi.org/10.5281/zenodo.16691960">https://doi.org/10.5281/zenodo.16691960</ext-link>
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>License</bold>: Apache License 2.0
+      </p>
+    </list-item>
+    <list-item>
+      <p><bold>Version</bold>: 2.1.0 (2025-09-08)</p>
+    </list-item>
+  </list>
+  <p>Detailed installation (Docker and manual), usage examples, tests,
+  and sample exports are provided in the repository.</p>
+</sec>
+</body>
+<back>
+<ref-list>
+  <title></title>
+  <ref id="ref-fda_maude">
+    <element-citation>
+      <person-group person-group-type="author">
+        <string-name>U.S. Food and Drug Administration</string-name>
+      </person-group>
+      <article-title>Manufacturer and user facility device experience (MAUDE)</article-title>
+      <year iso-8601-date="2025">2025</year>
+      <uri>https://www.fda.gov/medical-devices/postmarket-requirements-devices/mandatory-reporting-requirements-manufacturers-importers-and-device-user-facilities</uri>
+    </element-citation>
+  </ref>
+  <ref id="ref-openfda_api">
+    <element-citation>
+      <person-group person-group-type="author">
+        <string-name>openFDA</string-name>
+      </person-group>
+      <article-title>openFDA device event API</article-title>
+      <year iso-8601-date="2025">2025</year>
+      <uri>https://open.fda.gov/apis/device/event/</uri>
+    </element-citation>
+  </ref>
+  <ref id="ref-mckinney2010">
+    <element-citation publication-type="paper-conference">
+      <person-group person-group-type="author">
+        <name><surname>McKinney</surname><given-names>Wes</given-names></name>
+      </person-group>
+      <article-title>Data structures for statistical computing in python</article-title>
+      <source>Proceedings of the 9th python in science conference</source>
+      <year iso-8601-date="2010">2010</year>
+      <fpage>51</fpage>
+      <lpage>56</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-numpy">
+    <element-citation>
+      <person-group person-group-type="author">
+        <string-name>NumPy Developers</string-name>
+      </person-group>
+      <article-title>NumPy: The fundamental package for scientific computing with python</article-title>
+      <year iso-8601-date="2023">2023</year>
+      <uri>https://numpy.org/</uri>
+    </element-citation>
+  </ref>
+  <ref id="ref-flask">
+    <element-citation>
+      <person-group person-group-type="author">
+        <string-name>Flask Development Team</string-name>
+      </person-group>
+      <article-title>Flask: A lightweight WSGI web application framework</article-title>
+      <year iso-8601-date="2023">2023</year>
+      <uri>https://flask.palletsprojects.com/</uri>
+    </element-citation>
+  </ref>
+  <ref id="ref-openpyxl">
+    <element-citation>
+      <person-group person-group-type="author">
+        <name><surname>Clark</surname><given-names>Charlie</given-names></name>
+      </person-group>
+      <article-title>OpenPyXL: A python library for excel 2010 xlsx/xlsm files</article-title>
+      <year iso-8601-date="2023">2023</year>
+      <uri>https://openpyxl.readthedocs.io/</uri>
+    </element-citation>
+  </ref>
+  <ref id="ref-sqlite">
+    <element-citation>
+      <person-group person-group-type="author">
+        <string-name>SQLite Development Team</string-name>
+      </person-group>
+      <article-title>SQLite: Self-contained, high-reliability SQL database engine</article-title>
+      <year iso-8601-date="2023">2023</year>
+      <uri>https://www.sqlite.org/</uri>
+    </element-citation>
+  </ref>
+  <ref id="ref-docker">
+    <element-citation>
+      <person-group person-group-type="author">
+        <string-name>Docker Inc.</string-name>
+      </person-group>
+      <article-title>Docker: Empowering app development for developers</article-title>
+      <year iso-8601-date="2023">2023</year>
+      <uri>https://www.docker.com/</uri>
+    </element-citation>
+  </ref>
+</ref-list>
+</back>
+</article>
