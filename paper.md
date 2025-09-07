@@ -25,6 +25,7 @@ affiliations:
     name: Faculty of Medicine, Mansoura University, Mansoura, Egypt
 date: 2025-09-08
 bibliography: paper.bib
+# JOSS submission ready
 ---
 
 # Summary
