@@ -81,7 +81,7 @@ Deployment uses **Docker** [@docker] for reproducibility, and the web interface 
 Testing covers API integration, database operations, export generation, and web routes, with a 100% pass rate.  
 Performance benchmarks show ~5,000 records extracted in under 30 seconds.
 
-![MAUDEMetrics Workflow](MAUDEMetrics_Workflow.png)
+![MAUDEMetrics Workflow](MAUDEMetrics%20Workflow.png)
 
 *Figure 1: MAUDEMetrics architecture and workflow. User input via the web interface triggers Flask endpoints that query the openFDA API (with pagination), cache results in SQLite, and process data with Pandas. The system supports two export modes: raw CSV files that preserve the original FDA JSON structure, and processed Excel workbooks (via OpenPyXL) with cleaned datasets and summary statistics. Docker ensures reproducible deployment.*
 
