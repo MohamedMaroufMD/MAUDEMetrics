@@ -89,10 +89,20 @@ The system processes over 100 FDA data fields including:
 - Narrative reports (MDR texts with problem descriptions)
 
 ### Professional Export System
-Excel exports include three specialized sheets:
-- **Raw_Events**: Complete event data with all FDA fields
+The application provides two export options optimized for different use cases:
+
+**Optimized Data Export (Excel):**
 - **Events**: Processed data with consistent formatting, enhanced readability, and integrated MDR texts
 - **Summary**: Patient demographics, event types, and product problems with statistical summaries
+
+**Raw Data Export (ZIP with CSV files) - Optimized for Large Datasets:**
+- **Events.csv**: Main event data (report numbers, dates, flags)
+- **Devices.csv**: Device information (brand names, product codes, manufacturers)
+- **Patients.csv**: Patient demographics (age, sex, weight, outcomes)
+- **MDRTexts.csv**: Narrative reports (problem descriptions, manufacturer narratives)
+- **RawJSON.csv**: Complete original API responses
+
+The raw data export uses a streaming approach that can handle datasets with 50,000+ records efficiently, maintaining the original FDA API structure without any data processing or flattening.
 
 ### Interactive Analytics Dashboard
 Built-in visualization capabilities include:

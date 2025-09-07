@@ -151,22 +151,48 @@ Then visit [http://localhost:5005](http://localhost:5005) in your browser.
 
 3. **Review Results:** View recent events (last 50) in the browser or export for analysis
 
-4. **Export Data:** Click **Export Data** for professional .xlsx (Excel-compatible) reports
+4. **Export Data:** Choose between:
+   - **Optimized Data**: Professional Excel file with formatted sheets
+   - **Raw Data (faster)**: ZIP file with 5 CSV files in original API structure
 
 ---
 
 ## Export & Reports
 
-### Export Features
-- **Raw_Events Sheet:** Complete event data with all FDA fields
-- **Events Sheet:** Processed data with consistent formatting and integrated MDR texts
-- **Summary Sheet:** Patient demographics, event types, and device problems
+### Export Options
+- **Optimized Data Export:** Professional Excel file with 2 sheets:
+  - **Events Sheet**: Comprehensive processed and cleaned event data with integrated MDR texts
+  - **Summary Sheet**: Statistical summaries, demographics, and analytics
+- **Raw Data Export (faster):** ZIP file containing 5 CSV files in original API structure:
+  - `Events.csv` - Main event data (report numbers, dates, flags)
+  - `Devices.csv` - Device information (brand names, product codes, manufacturers)
+  - `Patients.csv` - Patient demographics (age, sex, weight, outcomes)
+  - `MDRTexts.csv` - Narrative reports (problem descriptions, manufacturer narratives)
+  - `RawJSON.csv` - Complete original API responses
 
 ### Data Formatting
 - **Consistent Date Format:** All dates formatted as mm/dd/yyyy
 - **Professional Styling:** Clean, readable .xlsx formatting
-- **Multiple Sheets:** Organized data presentation
+- **Multiple Formats:** Excel (.xlsx) and CSV options
 - **Data Validation:** Ensures data integrity and compatibility
+- **Performance Optimized:** Fast export for large datasets (50k+ records)
+
+### Export Examples
+Real-world examples with 19,000+ reports are available in the [`examples/`](examples/) folder:
+
+- **`MAUDEMetrics_2025-09-07_1657.xlsx`** - Optimized Excel export (14.1 MB)
+- **`MAUDEMetrics_RawData_20250907_165704.zip`** - Raw data export (20.3 MB)
+
+**File Size Comparison (19k+ Records):**
+- **Optimized Export**: 14.1 MB (Excel format with 2 sheets: Events + Summary)
+- **Raw Export**: 20.3 MB (ZIP with 5 CSV files, compressed)
+
+*The optimized export is more compact for this dataset size, while the raw export provides complete data structure preservation and faster processing for very large datasets.*
+
+**Usage:**
+1. Download the example files to understand the export formats
+2. Compare the two export options to choose the best fit for your needs
+3. Use as templates for understanding the data structure before running your own extractions
 
 ---
 
