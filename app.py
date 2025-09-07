@@ -751,8 +751,8 @@ def export_to_excel(include_raw_events=True):
                         print("Writing Raw_Events sheet to Excel...")
                         events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
                     else:
-                        log_export_message("Skipping Raw_Events sheet for better performance...")
-                        print("Skipping Raw_Events sheet for better performance...")
+                        # Skip Raw_Events sheet for better performance (no console message)
+                        pass
                 
                 # --- ALWAYS CREATE EVENTS SHEET (moved outside conditional block) ---
                 # --- Restore main_fields_df construction ---
@@ -1405,140 +1405,113 @@ def export_to_excel(include_raw_events=True):
         return filename
 
 def export_raw_events_only():
-    """Export ALL raw event data without any field exclusions - MAXIMUM PERFORMANCE"""
-    import pandas as pd
+    """
+    Export raw data in original API structure - 5 separate CSV files in a ZIP archive.
+    Maintains the original JSON structure without any flattening or processing.
+    """
+    import csv
     import json
     import os
-    import gc
+    import pandas as pd
+    import zipfile
     from datetime import datetime
     
-    log_export_message("Starting Raw Events export (ALL fields) - MAXIMUM PERFORMANCE...")
-    print("Starting Raw Events export (ALL fields) - MAXIMUM PERFORMANCE...")
+    log_export_message("Starting Raw Data export in original API structure...")
+    print("Starting Raw Data export in original API structure...")
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    base_filename = f'MAUDEMetrics_RawData_{timestamp}'
+    zip_filename = f'{base_filename}.zip'
     
     with get_db_connection() as conn:
-        # Get all events with raw JSON
-        events_df = pd.read_sql_query('SELECT id, raw_json FROM events', conn)
+        # Get total counts for progress tracking
+        total_events = conn.execute('SELECT COUNT(*) as count FROM events').fetchone()['count']
+        total_devices = conn.execute('SELECT COUNT(*) as count FROM devices').fetchone()['count']
+        total_patients = conn.execute('SELECT COUNT(*) as count FROM patients').fetchone()['count']
+        total_mdr_texts = conn.execute('SELECT COUNT(*) as count FROM mdr_texts').fetchone()['count']
         
-        if events_df.empty:
+        if total_events == 0:
             raise Exception("No data found in database. Please run a search first.")
         
-        total_events = len(events_df)
-        log_export_message(f"Processing {total_events:,} events for Raw Events export...")
-        print(f"Processing {total_events:,} events for Raw Events export...")
-        
-        # OPTIMIZATION 1: Adaptive chunking - only for large datasets
-        all_events_data = []
-        
-        if len(events_df) > 5000:  # Only chunk for large datasets
-            log_export_message("Large dataset detected - using chunked processing for memory efficiency...")
-            print("Large dataset detected - using chunked processing for memory efficiency...")
-            chunk_size = 1000
+        log_export_message(f"Exporting {total_events:,} events, {total_devices:,} devices, {total_patients:,} patients, {total_mdr_texts:,} MDR texts...")
+        print(f"Exporting {total_events:,} events, {total_devices:,} devices, {total_patients:,} patients, {total_mdr_texts:,} MDR texts...")
+
+        # Create ZIP file to contain all CSV files
+        with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             
-            for chunk_start in range(0, len(events_df), chunk_size):
-                chunk_end = min(chunk_start + chunk_size, len(events_df))
-                chunk_df = events_df.iloc[chunk_start:chunk_end]
-                
-                chunk_num = chunk_start//chunk_size + 1
-                total_chunks = (len(events_df)-1)//chunk_size + 1
-                log_export_message(f"Processing chunk {chunk_num}/{total_chunks} ({chunk_start+1:,}-{chunk_end:,} of {total_events:,})")
-                print(f"Processing chunk {chunk_num}/{total_chunks} ({chunk_start+1:,}-{chunk_end:,} of {total_events:,})")
-                
-                # Extract ALL fields from raw JSON (no exclusions)
-                chunk_data = []
-                for _, row in chunk_df.iterrows():
-                    if row['raw_json']:
-                        try:
-                            event = json.loads(row['raw_json'])
-                            # Extract ALL fields without any restrictions
-                            extracted = extract_all_fields_optimized(event, row['id'])
-                            chunk_data.append(extracted)
-                        except Exception as e:
-                            print(f"Error processing event {row['id']}: {str(e)}")
-                            chunk_data.append({'event_id': row['id'], 'error': str(e)})
-                
-                all_events_data.extend(chunk_data)
-                
-                # OPTIMIZATION 2: Clear chunk data and force garbage collection
-                del chunk_data
-                gc.collect()
-        else:
-            log_export_message("Small dataset - processing all records at once for maximum speed...")
-            print("Small dataset - processing all records at once for maximum speed...")
-            # Process all records at once for small datasets (faster)
-            for _, row in events_df.iterrows():
-                if row['raw_json']:
-                    try:
-                        event = json.loads(row['raw_json'])
-                        # Extract ALL fields without any restrictions
-                        extracted = extract_all_fields_optimized(event, row['id'])
-                        all_events_data.append(extracted)
-                    except Exception as e:
-                        print(f"Error processing event {row['id']}: {str(e)}")
-                        all_events_data.append({'event_id': row['id'], 'error': str(e)})
-        
-        if not all_events_data:
-            raise Exception("No valid data found to export.")
-        
-        log_export_message("Creating DataFrame...")
-        print("Creating DataFrame...")
-        # Create DataFrame with ALL fields
-        events_flat_df = pd.DataFrame(all_events_data)
-        log_export_message(f"Raw Events DataFrame created with {len(events_flat_df):,} rows and {len(events_flat_df.columns)} columns")
-        print(f"Raw Events DataFrame created with {len(events_flat_df):,} rows and {len(events_flat_df.columns)} columns")
-        
-        # Sanitize the DataFrame to prevent Excel errors
-        log_export_message("Sanitizing data for Excel compatibility...")
-        print("Sanitizing data for Excel compatibility...")
-        events_flat_df = sanitize_df(events_flat_df)
-        
-        # OPTIMIZATION 3: Clear original data
-        del all_events_data
-        gc.collect()
-        
-        # OPTIMIZATION 4: Skip date formatting for maximum speed
-        # events_flat_df = format_all_date_columns(events_flat_df)  # COMMENTED OUT FOR SPEED
-        
-        # Generate filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'MAUDEMetrics_RawEvents_{timestamp}.xlsx'
-        
-        log_export_message("Writing to Excel with minimal formatting...")
-        print("Writing to Excel with minimal formatting...")
-        # OPTIMIZATION 5: Write to Excel with NO formatting for maximum speed
-        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-            events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
+            # 1. Export Events table (main event data)
+            log_export_message("Exporting Events table...")
+            print("Exporting Events table...")
+            events_df = pd.read_sql_query('SELECT * FROM events ORDER BY id', conn)
             
-            # OPTIMIZATION 6: Minimal formatting only
-            wb = writer.book
-            ws = wb['Raw_Events']
+            # Write to temporary CSV and add to ZIP
+            events_csv = f'{base_filename}_Events.csv'
+            events_df.to_csv(events_csv, index=False, encoding='utf-8')
+            zipf.write(events_csv, f'Events.csv')
+            os.remove(events_csv)  # Clean up temp file
+            log_export_message(f"Events exported: {len(events_df):,} records")
+
+            # 2. Export Devices table
+            log_export_message("Exporting Devices table...")
+            print("Exporting Devices table...")
+            devices_df = pd.read_sql_query('SELECT * FROM devices ORDER BY event_id, id', conn)
             
-            # Only basic header formatting - no coloring
-            from openpyxl.styles import Font
-            header_font = Font(bold=True)
+            devices_csv = f'{base_filename}_Devices.csv'
+            devices_df.to_csv(devices_csv, index=False, encoding='utf-8')
+            zipf.write(devices_csv, f'Devices.csv')
+            os.remove(devices_csv)  # Clean up temp file
+            log_export_message(f"Devices exported: {len(devices_df):,} records")
+
+            # 3. Export Patients table
+            log_export_message("Exporting Patients table...")
+            print("Exporting Patients table...")
+            patients_df = pd.read_sql_query('SELECT * FROM patients ORDER BY event_id, id', conn)
             
-            for cell in ws[1]:
-                cell.font = header_font
+            patients_csv = f'{base_filename}_Patients.csv'
+            patients_df.to_csv(patients_csv, index=False, encoding='utf-8')
+            zipf.write(patients_csv, f'Patients.csv')
+            os.remove(patients_csv)  # Clean up temp file
+            log_export_message(f"Patients exported: {len(patients_df):,} records")
+
+            # 4. Export MDR Texts table
+            log_export_message("Exporting MDR Texts table...")
+            print("Exporting MDR Texts table...")
+            mdr_texts_df = pd.read_sql_query('SELECT * FROM mdr_texts ORDER BY event_id, id', conn)
             
-            # Freeze header only
-            ws.freeze_panes = 'B2'
+            mdr_texts_csv = f'{base_filename}_MDRTexts.csv'
+            mdr_texts_df.to_csv(mdr_texts_csv, index=False, encoding='utf-8')
+            zipf.write(mdr_texts_csv, f'MDRTexts.csv')
+            os.remove(mdr_texts_csv)  # Clean up temp file
+            log_export_message(f"MDR Texts exported: {len(mdr_texts_df):,} records")
+
+            # 5. Export Raw JSON data (original API responses)
+            log_export_message("Exporting Raw JSON data...")
+            print("Exporting Raw JSON data...")
+            raw_json_df = pd.read_sql_query('SELECT id, report_number, raw_json FROM events WHERE raw_json IS NOT NULL ORDER BY id', conn)
+            
+            raw_json_csv = f'{base_filename}_RawJSON.csv'
+            raw_json_df.to_csv(raw_json_csv, index=False, encoding='utf-8')
+            zipf.write(raw_json_csv, f'RawJSON.csv')
+            os.remove(raw_json_csv)  # Clean up temp file
+            log_export_message(f"Raw JSON exported: {len(raw_json_df):,} records")
+
+        log_export_message(f"Raw Data export completed: ZIP file created with 5 CSV files")
+        print(f"Raw Data export completed: ZIP file created with 5 CSV files")
         
-        # OPTIMIZATION 7: Clear DataFrame and force garbage collection
-        del events_flat_df
-        gc.collect()
-        
-        log_export_message(f"Raw Events export completed: {filename}")
-        print(f"Raw Events export completed: {filename}")
-        return filename
+        return zip_filename
 
 def extract_all_fields_optimized(event, event_id):
-    """Extract ALL fields from raw JSON without any exclusions - OPTIMIZED VERSION"""
+    """Extract ALL fields from raw JSON without any exclusions - OPTIMIZED FOR CSV STREAMING"""
     result = {'event_id': event_id}
     
     def flatten_dict_optimized(d, parent_key='', sep='_'):
-        """Recursively flatten nested dictionaries - OPTIMIZED"""
+        """Recursively flatten nested dictionaries - OPTIMIZED FOR CSV"""
         items = []
         for k, v in d.items():
-            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            # Sanitize field names for CSV compatibility
+            clean_key = str(k).replace('\n', ' ').replace('\r', ' ').replace(',', '_').replace('"', "'")
+            new_key = f"{parent_key}{sep}{clean_key}" if parent_key else clean_key
+            
             if isinstance(v, dict):
                 items.extend(flatten_dict_optimized(v, new_key, sep=sep).items())
             elif isinstance(v, list):
@@ -1547,14 +1520,18 @@ def extract_all_fields_optimized(event, event_id):
                     if isinstance(item, dict):
                         items.extend(flatten_dict_optimized(item, f"{new_key}_{i}", sep=sep).items())
                     else:
-                        # Sanitize text values to prevent Excel errors
+                        # Sanitize text values for CSV compatibility
                         if isinstance(item, str):
                             item = sanitize_text(item)
+                        elif item is None:
+                            item = ''  # Convert None to empty string for CSV
                         items.append((f"{new_key}_{i}", item))
             else:
-                # Sanitize text values to prevent Excel errors
+                # Sanitize text values for CSV compatibility
                 if isinstance(v, str):
                     v = sanitize_text(v)
+                elif v is None:
+                    v = ''  # Convert None to empty string for CSV
                 items.append((new_key, v))
         return dict(items)
     
@@ -1738,7 +1715,7 @@ def export_data():
 def export_raw_events():
     try:
         filename = export_raw_events_only()
-        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/zip')
     except Exception as e:
         return f"Error exporting raw events: {str(e)}", 500
 
@@ -1984,13 +1961,23 @@ def about():
 
 @app.route('/clear_data', methods=['POST'])
 def clear_data():
+    # Clear all database tables
     with get_db_connection() as conn:
         conn.execute('DELETE FROM mdr_texts')
         conn.execute('DELETE FROM patients')
         conn.execute('DELETE FROM devices')
         conn.execute('DELETE FROM events')
         conn.commit()
+    
+    # Clear all message queues (logs) for real-time console reset
+    while not extraction_messages.empty():
+        extraction_messages.get()
+    while not export_messages.empty():
+        export_messages.get()
+    
+    # Reset session data
     session['total_count'] = None  # Reset the total_count for the results page
+    
     return redirect(url_for('index'))
 
 # Real-time messaging endpoints
