@@ -2021,6 +2021,62 @@ def clear_messages():
     return jsonify({'status': 'cleared'})
 
 
+@app.route('/api/database-status')
+def database_status():
+    """Fetch FDA MAUDE database recency information for researchers"""
+    try:
+        # Fetch the most recent report to get actual data recency
+        api_url = "https://api.fda.gov/device/event.json?sort=date_received:desc&limit=1"
+        response = requests.get(api_url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            meta = data.get('meta', {})
+            results = data.get('results', [])
+            
+            # Get API metadata
+            last_updated = meta.get('last_updated', 'Unknown')
+            
+            # Get most recent report details
+            most_recent_date_received = None
+            most_recent_report_number = None
+            
+            if results:
+                latest_report = results[0]
+                most_recent_date_received = latest_report.get('date_received', '')
+                most_recent_report_number = latest_report.get('report_number', '')
+                
+                # Format date from YYYYMMDD to MM/DD/YYYY
+                if most_recent_date_received and len(most_recent_date_received) == 8:
+                    try:
+                        dt = datetime.strptime(most_recent_date_received, '%Y%m%d')
+                        most_recent_date_received = dt.strftime('%m/%d/%Y')
+                    except:
+                        pass
+            
+            return jsonify({
+                'success': True,
+                'last_updated': last_updated,
+                'most_recent_date_received': most_recent_date_received,
+                'most_recent_report_number': most_recent_report_number,
+                'total_records': meta.get('results', {}).get('total', 0)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'FDA API returned status {response.status_code}'
+            })
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'error': 'FDA API request timed out'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 
 if __name__ == "__main__":
     init_db()

@@ -94,6 +94,14 @@ class TestMAUDEMetrics(unittest.TestCase):
                 self.assertIn(table, tables)
             
             conn.close()
+    
+    def test_database_status_route_exists(self):
+        """Test that the database status API route exists and returns valid JSON."""
+        response = self.app.get('/api/database-status')
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        # Should have success key (either True or False)
+        self.assertIn('success', data)
 
 if __name__ == '__main__':
     unittest.main() 

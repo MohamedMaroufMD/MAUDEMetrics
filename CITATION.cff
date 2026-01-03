@@ -5,9 +5,9 @@ authors:
     given-names: Mohamed
     orcid: "0000-0001-7480-371X"
 title: "MAUDEMetrics: A Web-Based Tool for Automated Extraction and Analysis of FDA MAUDE Device Reports"
-version: "2.1.0"
+version: "2.1.1"
 doi: "10.5281/zenodo.16691960"
-date-released: 2025-09-08
+date-released: 2026-01-03
 url: "https://github.com/MohamedMaroufMD/MAUDEMetrics"
 repository-code: "https://github.com/MohamedMaroufMD/MAUDEMetrics"
 abstract: "MAUDEMetrics is a Python-based, Docker-compatible web application that democratizes access to MAUDE data by automating extraction, aggregation, and descriptive analysis of adverse event reports via the openFDA Device Event API. The tool provides an intuitive web interface that eliminates the need for programming expertise while supporting sophisticated multi-term queries across brand names, product codes, generic names, and manufacturer names. It automatically handles API pagination limitations and aggregates comprehensive datasets, yielding complete structured results with professional data exports including optimized Excel reports and fast raw data exports in original API structure (ZIP with 5 CSV files). The tool now supports both formatted analysis-ready exports and high-performance raw data exports optimized for large datasets (50k+ records)."

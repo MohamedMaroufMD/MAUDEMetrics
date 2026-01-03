@@ -1,323 +1,449 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <title>MAUDEMetrics: FDA Medical Device Adverse Event Explorer</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <title>MAUDEMetrics: FDA Medical Device Adverse Event Explorer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
 </head>
+
 <body>
-    <!-- Navbar/Header -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-      <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="/">
-          MAUDEMetrics
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item"><a class="nav-link active" href="/"><i class="bi bi-house-door"></i> Home</a></li>
-            <li class="nav-item"><a class="nav-link" href="/results"><i class="bi bi-bar-chart"></i> Results</a></li>
-            <li class="nav-item"><a class="nav-link" href="/analytics"><i class="bi bi-graph-up"></i> Analytics</a></li>
-            <li class="nav-item"><a class="nav-link" href="/about"><i class="bi bi-info-circle"></i> About</a></li>
-            <!-- Remove Help button -->
-          </ul>
-        </div>
+  <!-- Navbar/Header -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+        <img src="/static/favicon.png" alt="Logo" width="30" height="30"
+          class="d-inline-block align-text-top rounded-circle shadow-sm">
+        MAUDEMetrics
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link active" href="/"><i class="bi bi-house-door"></i> Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/results"><i class="bi bi-bar-chart"></i> Results</a></li>
+          <li class="nav-item"><a class="nav-link" href="/analytics"><i class="bi bi-graph-up"></i> Analytics</a></li>
+          <li class="nav-item"><a class="nav-link" href="/about"><i class="bi bi-info-circle"></i> About</a></li>
+          <!-- Remove Help button -->
+        </ul>
       </div>
-    </nav>
-    <div class="container my-5" style="max-width: 900px;">
-        <!-- Redesigned Hero Section -->
-        <div class="maude-hero text-center my-5">
-            <div class="maude-title" style="color:#174ea6; font-size:2.7rem; font-weight:700;">MAUDEMetrics</div>
-            <div class="maude-subtitle" style="color:#111; font-size:1.35rem; font-weight:600;">FDA Medical Device Adverse Event Explorer</div>
-            <div class="maude-divider mx-auto"></div>
-            <div class="maude-mission" style="color:#1976d2; font-weight:600;">Supporting Evidence-Based Medical Device Safety Research</div>
-            <div class="maude-description mx-auto mt-3" style="max-width: 600px; color:#444; font-size:0.98rem;">MAUDEMetrics is an <span class="fw-semibold">open-source</span> tool for exploring adverse event reports submitted to the FDA’s MAUDE database, enabling efficient safety signal detection and reporting.</div>
-        </div>
-        {% if is_fresh_start %}
-            <span class="badge bg-success mb-2">Fresh dataset: No previous results.</span>
-        {% else %}
-            <span class="badge bg-warning text-dark mb-2">Cumulative: Results from multiple searches are shown.</span>
-        {% endif %}
-        <!-- Notes Section -->
-        <div class="notes-section text-center mb-4" style="max-width:700px;margin:auto;">
-            <div class="note-item text-muted mb-2" style="font-size: 0.8rem;">
-                <strong>📋 Note:</strong> Large datasets may take a moment to process during extraction and export.
-            </div>
-            <div class="note-item text-muted" style="font-size: 0.8rem;">
-                <strong>💡 Tip:</strong> Search results are cumulative. Use <b>Clear All Data</b> to reset before a new search if you want to start fresh.
-            </div>
-        </div>
-        <!-- Query Card -->
-        <div class="card p-4 mb-4 shadow-lg border-0" style="background:#f5f7fa;">
-          <h5 class="mb-3 fw-bold"><span class="me-2">🔍</span>Search MAUDE Data</h5>
-          <div class="alert alert-info mb-3" style="font-size: 0.85rem; background-color: #e3f2fd; border-color: #90caf9; color: #1565c0;">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Search Tips:</strong> You can enter multiple values separated by commas. Partial matches are supported for all text fields.
-          </div>
-          <form method="post">
-            <div class="row g-3 mb-3">
-              <div class="col-12 col-md-6">
-                <label for="brand_name" class="form-label fw-semibold">Brand Name(s) <span class="text-muted">(optional)</span></label>
-                <input type="text" id="brand_name" name="brand_name" class="form-control" placeholder="e.g., MiniMed 670G, Endurant II" style="color:#bbb;">
-              </div>
-              <div class="col-12 col-md-6">
-                <label for="product_code" class="form-label fw-semibold">Product Code(s) <span class="text-muted">(optional)</span></label>
-                <input type="text" id="product_code" name="product_code" class="form-control" placeholder="e.g., MAF, KYF, MND" style="color:#bbb;">
-              </div>
-            </div>
-            <div class="row g-3 mb-3">
-              <div class="col-12 col-md-6">
-                <label for="manufacturer" class="form-label fw-semibold">Manufacturer(s) <span class="text-muted">(optional)</span></label>
-                <input type="text" id="manufacturer" name="manufacturer" class="form-control" placeholder="e.g., Medtronic, Abbott" style="color:#bbb;">
-              </div>
-              <div class="col-12 col-md-6">
-                <label for="device_generic_name" class="form-label fw-semibold">Product Class(es) <span class="text-muted">(optional)</span></label>
-                <input type="text" id="device_generic_name" name="device_generic_name" class="form-control" placeholder="e.g., pacemaker, defibrillator, stent" style="color:#bbb;">
-              </div>
-            </div>
-            <div class="row g-3 mb-3 align-items-end">
-              <div class="col-12 col-md-6">
-                <label for="start_date" class="form-label fw-semibold">Start Date</label>
-                <input type="date" id="start_date" name="start_date" class="form-control date-input">
-              </div>
-              <div class="col-12 col-md-6">
-                <label for="end_date" class="form-label fw-semibold">End Date</label>
-                <input type="date" id="end_date" name="end_date" class="form-control date-input">
-              </div>
-            </div>
-            <div class="d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary btn-lg px-4 d-flex align-items-center gap-2" aria-label="Extract MAUDE Data" id="extractBtn">
-                <span class="bi bi-search"></span> Extract MAUDE Data
-              </button>
-            </div>
-            <!-- Extract Data Spinner -->
-            <div id="extractSpinner" class="text-center mt-3" style="display: none;">
-              <div class="d-flex align-items-center justify-content-center">
-                <div class="spinner-border spinner-border-sm me-3" style="color: #174ea6; width: 1.2rem; height: 1.2rem;" role="status"></div>
-                <div class="text-secondary" style="font-size: 0.9rem;">
-                  <span class="fw-semibold" style="color: #2c3e50;">Extracting data from FDA API...</span>
-                  <br><span class="small">This may take a few moments for large datasets</span>
-                </div>
-              </div>
-            </div>
-            {% if error %}
-              <div class="alert alert-danger mt-3">{{ error }}</div>
-            {% endif %}
-          </form>
-        </div>
-        <!-- Real-time Console Messages -->
-        <div id="consoleContainer" class="mt-4 mb-4" style="display: none;">
-          <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
-            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none; padding: 1rem 1.5rem;">
-              <div class="d-flex align-items-center">
-                <div class="me-3" style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);"></div>
-                <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i>Real-time Console</h6>
-              </div>
-              <button type="button" class="btn-close btn-close-white" onclick="hideConsole()" style="opacity: 0.8; font-size: 0.9rem;"></button>
-            </div>
-            <div class="card-body p-0">
-              <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; max-height: 280px; overflow-y: auto; padding: 1.25rem; border-radius: 0 0 0.5rem 0.5rem; border-top: 1px solid #334155;">
-                <div id="consoleOutput" style="line-height: 1.6;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div class="mb-3 d-flex flex-nowrap gap-2 justify-content-center align-items-center">
-            <a href="/results" class="btn btn-primary d-flex align-items-center gap-2" aria-label="View Results"><span class="bi bi-bar-chart"></span> View Results</a>
-            <a href="/analytics" class="btn btn-warning d-flex align-items-center gap-2" aria-label="Analytics"><span class="bi bi-graph-up"></span> Analytics</a>
-                            <div class="dropdown">
-                                <button class="btn btn-success dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="exportBtn">
-                                    <span class="bi bi-download"></span> Export Data
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="/export" id="exportOptimizedBtn"><span class="bi bi-file-earmark-spreadsheet"></span> Optimized Data</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="/export/raw" id="exportRawBtn"><span class="bi bi-file-earmark-text"></span> Raw Data <small class="text-muted">(faster)</small></a></li>
-                                </ul>
-                            </div>
-            <form method="post" action="/clear_data" style="display: inline;">
-                <button type="submit" class="btn btn-danger d-flex align-items-center gap-2" aria-label="Clear All Data" onclick="return confirm('Are you sure you want to clear all data?')"><span class="bi bi-x-circle"></span> Clear All Data</button>
-            </form>
-        </div>
-        <div id="exportMessage" class="text-center mt-3" style="display: none;">
-            <div class="text-secondary small">
-                <span class="bi bi-info-circle me-2"></span>
-                Processing export... This may take a few moments for large datasets
-            </div>
-        </div>
-        <div class="mb-3 d-flex flex-wrap gap-2 justify-content-center">
-            <a href="https://open.fda.gov/fields/deviceevent_reference.xlsx" class="btn btn-outline-secondary d-flex align-items-center gap-2" aria-label="Download the Fields Reference Document"><span class="bi bi-file-earmark-arrow-down"></span> Download the Fields Reference Document</a>
-            <a href="https://open.fda.gov/about/status/" target="_blank" class="btn btn-outline-info d-flex align-items-center gap-2" aria-label="Check FDA API Status"><span class="bi bi-info-circle"></span> Check FDA API Status</a>
-        </div>
-        <!-- Footer -->
-        <footer class="custom-footer text-center mt-5 pt-4 border-top">
-          <div class="footer-author mb-1">
-            Developed by <a href="https://mohamedmaroufmd.github.io" target="_blank" class="footer-link">Mohamed Marouf, MD</a>
-            &nbsp;|&nbsp;
-            <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics" target="_blank" class="footer-link">
-              <i class="bi bi-github"></i> Project GitHub
-            </a>
-          </div>
-          <div class="footer-disclaimer small text-muted">
-            <span class="me-1" style="font-size:1.1em;">&#9888;&#65039;</span>
-            For research and educational purposes only. Not for clinical decision-making.
-          </div>
-          <div class="small text-muted">Powered by <a href="https://open.fda.gov/" target="_blank">openFDA</a> | Apache 2.0 License</div>
-        </footer>
     </div>
-    <!-- Export Toast -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-      <div id="exportToast" class="toast align-items-center text-bg-info border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            Preparing your export. This may take a few moments for large datasets.
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
+  </nav>
+  <div class="container my-5" style="max-width: 900px;">
+    <!-- Redesigned Hero Section -->
+    <div class="maude-hero text-center my-5">
+      <div class="maude-title" style="color:#174ea6; font-size:2.7rem; font-weight:700;">MAUDEMetrics</div>
+      <div class="maude-subtitle" style="color:#111; font-size:1.35rem; font-weight:600;">FDA Medical Device Adverse
+        Event Explorer</div>
+      <div class="maude-divider mx-auto"></div>
+      <div class="maude-mission" style="color:#1976d2; font-weight:600;">Supporting Evidence-Based Medical Device Safety
+        Research</div>
+      <div class="maude-description mx-auto mt-3" style="max-width: 600px; color:#444; font-size:0.98rem;">MAUDEMetrics
+        is an <span class="fw-semibold">open-source</span> tool for exploring adverse event reports submitted to the
+        FDA’s MAUDE database, enabling efficient safety signal detection and reporting.</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <!-- FDA Database Status - Compact Card -->
+    <div id="databaseStatusBanner" class="mb-3 d-flex justify-content-center" style="margin-top: -0.5rem;">
+      <div class="px-4 py-2 rounded-4"
+        style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border: 1px solid rgba(76, 175, 80, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <div id="statusIndicator"
+            style="width: 8px; height: 8px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite; box-shadow: 0 0 4px rgba(76, 175, 80, 0.6);">
+          </div>
+          <span class="fw-semibold" style="color: #2e7d32; font-size: 0.8rem;">FDA MAUDE Database Status</span>
+        </div>
+        <div id="databaseStatusContent" style="font-size: 0.78rem; color: #558b2f;">
+          <span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>Loading database status...</span>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes pulse {
+
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        50% {
+          opacity: 0.6;
+          transform: scale(1.1);
+        }
+      }
+    </style>
+
+    {% if is_fresh_start %}
+    <span class="badge bg-success mb-2">Fresh dataset: No previous results.</span>
+    {% else %}
+    <span class="badge bg-warning text-dark mb-2">Cumulative: Results from multiple searches are shown.</span>
+    {% endif %}
+    <!-- Notes Section -->
+    <div class="notes-section text-center mb-4" style="max-width:700px;margin:auto;">
+      <div class="note-item text-muted mb-2" style="font-size: 0.8rem;">
+        <strong>📋 Note:</strong> Large datasets may take a moment to process during extraction and export.
+      </div>
+      <div class="note-item text-muted" style="font-size: 0.8rem;">
+        <strong>💡 Tip:</strong> Search results are cumulative. Use <b>Clear All Data</b> to reset before a new search
+        if you want to start fresh.
+      </div>
+    </div>
+    <!-- Query Card -->
+    <div class="card p-4 mb-4 shadow-lg border-0" style="background:#f5f7fa;">
+      <h5 class="mb-3 fw-bold"><span class="me-2">🔍</span>Search MAUDE Data</h5>
+      <div class="alert alert-info mb-3"
+        style="font-size: 0.85rem; background-color: #e3f2fd; border-color: #90caf9; color: #1565c0;">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Search Tips:</strong> You can enter multiple values separated by commas. Partial matches are supported
+        for all text fields.
+      </div>
+      <form method="post">
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-6">
+            <label for="brand_name" class="form-label fw-semibold">Brand Name(s) <span
+                class="text-muted">(optional)</span></label>
+            <input type="text" id="brand_name" name="brand_name" class="form-control"
+              placeholder="e.g., MiniMed 670G, Endurant II" style="color:#bbb;">
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="product_code" class="form-label fw-semibold">Product Code(s) <span
+                class="text-muted">(optional)</span></label>
+            <input type="text" id="product_code" name="product_code" class="form-control"
+              placeholder="e.g., MAF, KYF, MND" style="color:#bbb;">
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-6">
+            <label for="manufacturer" class="form-label fw-semibold">Manufacturer(s) <span
+                class="text-muted">(optional)</span></label>
+            <input type="text" id="manufacturer" name="manufacturer" class="form-control"
+              placeholder="e.g., Medtronic, Abbott" style="color:#bbb;">
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="device_generic_name" class="form-label fw-semibold">Product Class(es) <span
+                class="text-muted">(optional)</span></label>
+            <input type="text" id="device_generic_name" name="device_generic_name" class="form-control"
+              placeholder="e.g., pacemaker, defibrillator, stent" style="color:#bbb;">
+          </div>
+        </div>
+        <div class="row g-3 mb-3 align-items-end">
+          <div class="col-12 col-md-6">
+            <label for="start_date" class="form-label fw-semibold">Start Date</label>
+            <input type="date" id="start_date" name="start_date" class="form-control date-input">
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="end_date" class="form-label fw-semibold">End Date</label>
+            <input type="date" id="end_date" name="end_date" class="form-control date-input">
+          </div>
+        </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary btn-lg px-4 d-flex align-items-center gap-2"
+            aria-label="Extract MAUDE Data" id="extractBtn">
+            <span class="bi bi-search"></span> Extract MAUDE Data
+          </button>
+        </div>
+        <!-- Extract Data Spinner -->
+        <div id="extractSpinner" class="text-center mt-3" style="display: none;">
+          <div class="d-flex align-items-center justify-content-center">
+            <div class="spinner-border spinner-border-sm me-3" style="color: #174ea6; width: 1.2rem; height: 1.2rem;"
+              role="status"></div>
+            <div class="text-secondary" style="font-size: 0.9rem;">
+              <span class="fw-semibold" style="color: #2c3e50;">Extracting data from FDA API...</span>
+              <br><span class="small">This may take a few moments for large datasets</span>
+            </div>
+          </div>
+        </div>
+        {% if error %}
+        <div class="alert alert-danger mt-3">{{ error }}</div>
+        {% endif %}
+      </form>
+    </div>
     <!-- Real-time Console Messages -->
     <div id="consoleContainer" class="mt-4 mb-4" style="display: none;">
-      <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);">
-        <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none;">
-          <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i>Real-time Console</h6>
-          <button type="button" class="btn-close btn-close-white" onclick="hideConsole()" style="opacity: 0.8;"></button>
+      <div class="card shadow-lg border-0"
+        style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+        <div class="card-header d-flex justify-content-between align-items-center"
+          style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none; padding: 1rem 1.5rem;">
+          <div class="d-flex align-items-center">
+            <div class="me-3"
+              style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);">
+            </div>
+            <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i>Real-time Console</h6>
+          </div>
+          <button type="button" class="btn-close btn-close-white" onclick="hideConsole()"
+            style="opacity: 0.8; font-size: 0.9rem;"></button>
         </div>
         <div class="card-body p-0">
-          <div style="background: #1e1e1e; color: #00ff00; font-family: 'Courier New', monospace; max-height: 250px; overflow-y: auto; padding: 1rem; border-radius: 0 0 0.375rem 0.375rem;">
-            <div id="consoleOutput"></div>
+          <div
+            style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; max-height: 280px; overflow-y: auto; padding: 1.25rem; border-radius: 0 0 0.5rem 0.5rem; border-top: 1px solid #334155;">
+            <div id="consoleOutput" style="line-height: 1.6;"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Simple Spinner JavaScript -->
-    <script>
-      let extractionEventSource = null;
-      let exportEventSource = null;
-      
-      document.addEventListener('DOMContentLoaded', function() {
-        // Extract Data spinner
-        const extractBtn = document.getElementById('extractBtn');
-        const extractSpinner = document.getElementById('extractSpinner');
-        
-        if (extractBtn) {
-          extractBtn.addEventListener('click', function() {
-            extractSpinner.style.display = 'block';
-            showConsole();
-            startExtractionStream();
-          });
-        }
-        
-        // Hide spinners on page load (success) or if there's an error
-        if (extractSpinner) {
-          extractSpinner.style.display = 'none';
-        }
-        
-        // Export message functionality
-        const exportOptimizedBtn = document.getElementById('exportOptimizedBtn');
-        const exportRawBtn = document.getElementById('exportRawBtn');
-        const exportMessage = document.getElementById('exportMessage');
-        
-        if (exportOptimizedBtn && exportMessage) {
-          exportOptimizedBtn.addEventListener('click', function() {
-            exportMessage.style.display = 'block';
-            showConsole();
-            startExportStream();
-          });
-        }
-        
-        if (exportRawBtn && exportMessage) {
-          exportRawBtn.addEventListener('click', function() {
-            exportMessage.style.display = 'block';
-            showConsole();
-            startExportStream();
-          });
-        }
-      });
-      
-      function showConsole() {
-        document.getElementById('consoleContainer').style.display = 'block';
-        document.getElementById('consoleOutput').innerHTML = '';
+    <!-- Action Buttons -->
+    <div class="mb-3 d-flex flex-nowrap gap-2 justify-content-center align-items-center">
+      <a href="/results" class="btn btn-primary d-flex align-items-center gap-2" aria-label="View Results"><span
+          class="bi bi-bar-chart"></span> View Results</a>
+      <a href="/analytics" class="btn btn-warning d-flex align-items-center gap-2" aria-label="Analytics"><span
+          class="bi bi-graph-up"></span> Analytics</a>
+      <div class="dropdown">
+        <button class="btn btn-success dropdown-toggle d-flex align-items-center gap-2" type="button"
+          data-bs-toggle="dropdown" aria-expanded="false" id="exportBtn">
+          <span class="bi bi-download"></span> Export Data
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item d-flex align-items-center gap-2" href="/export" id="exportOptimizedBtn"><span
+                class="bi bi-file-earmark-spreadsheet"></span> Optimized Data</a></li>
+          <li><a class="dropdown-item d-flex align-items-center gap-2" href="/export/raw" id="exportRawBtn"><span
+                class="bi bi-file-earmark-text"></span> Raw Data <small class="text-muted">(faster)</small></a></li>
+        </ul>
+      </div>
+      <form method="post" action="/clear_data" style="display: inline;">
+        <button type="submit" class="btn btn-danger d-flex align-items-center gap-2" aria-label="Clear All Data"
+          onclick="return confirm('Are you sure you want to clear all data?')"><span class="bi bi-x-circle"></span>
+          Clear All Data</button>
+      </form>
+    </div>
+    <div id="exportMessage" class="text-center mt-3" style="display: none;">
+      <div class="text-secondary small">
+        <span class="bi bi-info-circle me-2"></span>
+        Processing export... This may take a few moments for large datasets
+      </div>
+    </div>
+    <div class="mb-3 d-flex flex-wrap gap-2 justify-content-center">
+      <a href="https://open.fda.gov/fields/deviceevent_reference.xlsx"
+        class="btn btn-outline-secondary d-flex align-items-center gap-2"
+        aria-label="Download the Fields Reference Document"><span class="bi bi-file-earmark-arrow-down"></span> Download
+        the Fields Reference Document</a>
+      <a href="https://open.fda.gov/about/status/" target="_blank"
+        class="btn btn-outline-info d-flex align-items-center gap-2" aria-label="Check FDA API Status"><span
+          class="bi bi-info-circle"></span> Check FDA API Status</a>
+    </div>
+    <!-- Footer -->
+    <footer class="custom-footer text-center mt-5 pt-4 border-top">
+      <div class="footer-author mb-1">
+        &copy; <span id="currentYear"></span> Developed by <a href="https://mohamedmaroufmd.github.io" target="_blank"
+          class="footer-link">Mohamed Marouf,
+          MD</a>
+        &nbsp;|&nbsp;
+        <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics" target="_blank" class="footer-link">
+          <i class="bi bi-github"></i> Project GitHub
+        </a>
+      </div>
+      <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+      </script>
+      <div class="footer-disclaimer small text-muted">
+        <span class="me-1" style="font-size:1.1em;">&#9888;&#65039;</span>
+        For research and educational purposes only. Not for clinical decision-making.
+      </div>
+      <div class="small text-muted">Powered by <a href="https://open.fda.gov/" target="_blank">openFDA</a> | Apache 2.0
+        License</div>
+    </footer>
+  </div>
+  <!-- Export Toast -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="exportToast" class="toast align-items-center text-bg-info border-0" role="alert" aria-live="assertive"
+      aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          Preparing your export. This may take a few moments for large datasets.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+          aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Real-time Console Messages -->
+  <div id="consoleContainer" class="mt-4 mb-4" style="display: none;">
+    <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);">
+      <div class="card-header d-flex justify-content-between align-items-center"
+        style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none;">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i>Real-time Console</h6>
+        <button type="button" class="btn-close btn-close-white" onclick="hideConsole()" style="opacity: 0.8;"></button>
+      </div>
+      <div class="card-body p-0">
+        <div
+          style="background: #1e1e1e; color: #00ff00; font-family: 'Courier New', monospace; max-height: 250px; overflow-y: auto; padding: 1rem; border-radius: 0 0 0.375rem 0.375rem;">
+          <div id="consoleOutput"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simple Spinner JavaScript -->
+  <script>
+    let extractionEventSource = null;
+    let exportEventSource = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // Extract Data spinner
+      const extractBtn = document.getElementById('extractBtn');
+      const extractSpinner = document.getElementById('extractSpinner');
+
+      if (extractBtn) {
+        extractBtn.addEventListener('click', function () {
+          extractSpinner.style.display = 'block';
+          showConsole();
+          startExtractionStream();
+        });
       }
-      
-      function hideConsole() {
-        document.getElementById('consoleContainer').style.display = 'none';
-        if (extractionEventSource) {
-          extractionEventSource.close();
-          extractionEventSource = null;
-        }
-        if (exportEventSource) {
-          exportEventSource.close();
-          exportEventSource = null;
-        }
+
+      // Hide spinners on page load (success) or if there's an error
+      if (extractSpinner) {
+        extractSpinner.style.display = 'none';
       }
-      
-      function addConsoleMessage(message, timestamp) {
-        const consoleOutput = document.getElementById('consoleOutput');
-        const messageDiv = document.createElement('div');
-        messageDiv.style.marginBottom = '0.5rem';
-        messageDiv.style.padding = '0.25rem 0';
-        
-        // Enhanced message formatting with better colors
-        const timestampSpan = `<span style="color: #64748b; font-weight: 500;">[${timestamp}]</span>`;
-        const messageSpan = `<span style="color: #e2e8f0;">${message}</span>`;
-        
-        messageDiv.innerHTML = `${timestampSpan} ${messageSpan}`;
-        consoleOutput.appendChild(messageDiv);
-        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+      // Export message functionality
+      const exportOptimizedBtn = document.getElementById('exportOptimizedBtn');
+      const exportRawBtn = document.getElementById('exportRawBtn');
+      const exportMessage = document.getElementById('exportMessage');
+
+      if (exportOptimizedBtn && exportMessage) {
+        exportOptimizedBtn.addEventListener('click', function () {
+          exportMessage.style.display = 'block';
+          showConsole();
+          startExportStream();
+        });
       }
-      
-      function startExtractionStream() {
-        if (extractionEventSource) {
-          extractionEventSource.close();
+
+      if (exportRawBtn && exportMessage) {
+        exportRawBtn.addEventListener('click', function () {
+          exportMessage.style.display = 'block';
+          showConsole();
+          startExportStream();
+        });
+      }
+    });
+
+    function showConsole() {
+      document.getElementById('consoleContainer').style.display = 'block';
+      document.getElementById('consoleOutput').innerHTML = '';
+    }
+
+    function hideConsole() {
+      document.getElementById('consoleContainer').style.display = 'none';
+      if (extractionEventSource) {
+        extractionEventSource.close();
+        extractionEventSource = null;
+      }
+      if (exportEventSource) {
+        exportEventSource.close();
+        exportEventSource = null;
+      }
+    }
+
+    function addConsoleMessage(message, timestamp) {
+      const consoleOutput = document.getElementById('consoleOutput');
+      const messageDiv = document.createElement('div');
+      messageDiv.style.marginBottom = '0.5rem';
+      messageDiv.style.padding = '0.25rem 0';
+
+      // Enhanced message formatting with better colors
+      const timestampSpan = `<span style="color: #64748b; font-weight: 500;">[${timestamp}]</span>`;
+      const messageSpan = `<span style="color: #e2e8f0;">${message}</span>`;
+
+      messageDiv.innerHTML = `${timestampSpan} ${messageSpan}`;
+      consoleOutput.appendChild(messageDiv);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    function startExtractionStream() {
+      if (extractionEventSource) {
+        extractionEventSource.close();
+      }
+
+      extractionEventSource = new EventSource('/stream/extraction');
+      extractionEventSource.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        if (data.message !== 'keepalive') {
+          addConsoleMessage(data.message, data.timestamp);
         }
-        
-        extractionEventSource = new EventSource('/stream/extraction');
-        extractionEventSource.onmessage = function(event) {
-          const data = JSON.parse(event.data);
-          if (data.message !== 'keepalive') {
-            addConsoleMessage(data.message, data.timestamp);
+      };
+
+      extractionEventSource.onerror = function (event) {
+        console.error('Extraction stream error:', event);
+        extractionEventSource.close();
+      };
+    }
+
+    function startExportStream() {
+      if (exportEventSource) {
+        exportEventSource.close();
+      }
+
+      exportEventSource = new EventSource('/stream/export');
+      exportEventSource.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        if (data.message !== 'keepalive') {
+          addConsoleMessage(data.message, data.timestamp);
+        }
+      };
+
+      exportEventSource.onerror = function (event) {
+        console.error('Export stream error:', event);
+        exportEventSource.close();
+      };
+    }
+
+    // Clear messages when page loads
+    fetch('/api/clear-messages');
+
+    // Fetch and display FDA database status
+    function fetchDatabaseStatus() {
+      const statusContent = document.getElementById('databaseStatusContent');
+      const statusIndicator = document.getElementById('statusIndicator');
+
+      // Show loading state
+      statusContent.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>Loading database status...</span>';
+      statusIndicator.style.background = '#ffc107';
+
+      fetch('/api/database-status')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const lastUpdated = data.last_updated || 'Unknown';
+            const mostRecentDate = data.most_recent_date_received || 'Unknown';
+            const totalRecords = data.total_records ? data.total_records.toLocaleString() : 'Unknown';
+
+            statusContent.innerHTML = `
+                <span class="me-3"><i class="bi bi-calendar-check me-1"></i><strong>API Updated:</strong> ${lastUpdated}</span>
+                <span class="me-3"><i class="bi bi-calendar-event me-1"></i><strong>Latest Report:</strong> ${mostRecentDate}</span>
+                <span><i class="bi bi-database me-1"></i><strong>Total Records:</strong> ${totalRecords}</span>
+              `;
+            statusIndicator.style.background = '#4caf50';
+            statusIndicator.style.animation = 'none';
+          } else {
+            statusContent.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>${data.error || 'Unable to fetch status'}</span>`;
+            statusIndicator.style.background = '#ff9800';
+            statusIndicator.style.animation = 'none';
           }
-        };
-        
-        extractionEventSource.onerror = function(event) {
-          console.error('Extraction stream error:', event);
-          extractionEventSource.close();
-        };
-      }
-      
-      function startExportStream() {
-        if (exportEventSource) {
-          exportEventSource.close();
-        }
-        
-        exportEventSource = new EventSource('/stream/export');
-        exportEventSource.onmessage = function(event) {
-          const data = JSON.parse(event.data);
-          if (data.message !== 'keepalive') {
-            addConsoleMessage(data.message, data.timestamp);
-          }
-        };
-        
-        exportEventSource.onerror = function(event) {
-          console.error('Export stream error:', event);
-          exportEventSource.close();
-        };
-      }
-      
-      // Clear messages when page loads
-      fetch('/api/clear-messages');
-    </script>
+        })
+        .catch(error => {
+          statusContent.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Failed to connect to FDA API</span>';
+          statusIndicator.style.background = '#f44336';
+          statusIndicator.style.animation = 'none';
+        });
+    }
+
+    // Fetch database status on page load
+    document.addEventListener('DOMContentLoaded', function () {
+      fetchDatabaseStatus();
+    });
+  </script>
 </body>
+
 </html>
