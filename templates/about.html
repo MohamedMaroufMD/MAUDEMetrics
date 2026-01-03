@@ -1,57 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About - MAUDEMetrics</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-      <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="/">
-          MAUDEMetrics
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-door"></i> Home</a></li>
-            <li class="nav-item"><a class="nav-link" href="/results"><i class="bi bi-bar-chart"></i> Results</a></li>
-            <li class="nav-item"><a class="nav-link" href="/analytics"><i class="bi bi-graph-up"></i> Analytics</a></li>
-            <li class="nav-item"><a class="nav-link active" href="/about"><i class="bi bi-info-circle"></i> About</a></li>
-          </ul>
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+                <img src="/static/favicon.png" alt="Logo" width="30" height="30"
+                    class="d-inline-block align-text-top rounded-circle shadow-sm">
+                MAUDEMetrics
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-door"></i> Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/results"><i class="bi bi-bar-chart"></i> Results</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link" href="/analytics"><i class="bi bi-graph-up"></i>
+                            Analytics</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/about"><i class="bi bi-info-circle"></i>
+                            About</a></li>
+                </ul>
+            </div>
         </div>
-      </div>
     </nav>
 
     <div class="container my-5" style="max-width: 1200px;">
         <!-- Hero Section -->
         <div class="maude-hero text-center my-5">
             <div class="maude-title" style="color:#174ea6; font-size:2.7rem; font-weight:700;">About MAUDEMetrics</div>
-            <div class="maude-subtitle" style="color:#111; font-size:1.35rem; font-weight:600;">FDA Medical Device Adverse Event Explorer</div>
+            <div class="maude-subtitle" style="color:#111; font-size:1.35rem; font-weight:600;">FDA Medical Device
+                Adverse Event Explorer</div>
             <div class="maude-divider mx-auto"></div>
-            <div class="maude-mission" style="color:#1976d2; font-weight:600;">Supporting Evidence-Based Medical Device Safety Research</div>
-            <div class="maude-description mx-auto mt-3" style="max-width: 700px; color:#444; font-size:1rem; line-height: 1.6;">MAUDEMetrics is an <span class="fw-semibold">open-source</span> tool for exploring adverse event reports submitted to the FDA's MAUDE database, enabling efficient safety signal detection and reporting.</div>
+            <div class="maude-mission" style="color:#1976d2; font-weight:600;">Supporting Evidence-Based Medical Device
+                Safety Research</div>
+            <div class="maude-description mx-auto mt-3"
+                style="max-width: 700px; color:#444; font-size:1rem; line-height: 1.6;">MAUDEMetrics is an <span
+                    class="fw-semibold">open-source</span> tool for exploring adverse event reports submitted to the
+                FDA's MAUDE database, enabling efficient safety signal detection and reporting.</div>
         </div>
 
         <!-- Project Overview -->
         <div class="row mb-5">
             <div class="col-lg-10 mx-auto">
-                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+                <div class="card shadow-lg border-0"
+                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
                     <div class="card-body p-5">
                         <div class="d-flex align-items-center mb-4">
-                            <div class="me-3" style="width: 50px; height: 50px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <div class="me-3"
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-lightbulb text-white" style="font-size: 1.5rem;"></i>
                             </div>
                             <h3 class="card-title mb-0" style="color: #1e3a8a;">Project Overview</h3>
                         </div>
-                        <p class="lead mb-4" style="color: #374151; font-size: 1.1rem;">MAUDEMetrics provides researchers, healthcare professionals, and medical device safety analysts with powerful tools to efficiently search, filter, and export comprehensive adverse event data for evidence-based safety research and signal detection.</p>
-                        <p class="mb-0" style="color: #6b7280; line-height: 1.7;">The platform integrates directly with the FDA's MAUDE (Manufacturer and User Facility Device Experience) database through the openFDA API, ensuring access to the most current and comprehensive medical device safety data available.</p>
+                        <p class="lead mb-4" style="color: #374151; font-size: 1.1rem;">MAUDEMetrics provides
+                            researchers, healthcare professionals, and medical device safety analysts with powerful
+                            tools to efficiently search, filter, and export comprehensive adverse event data for
+                            evidence-based safety research and signal detection.</p>
+                        <p class="mb-0" style="color: #6b7280; line-height: 1.7;">The platform integrates directly with
+                            the FDA's MAUDE (Manufacturer and User Facility Device Experience) database through the
+                            openFDA API, ensuring access to the most current and comprehensive medical device safety
+                            data available.</p>
                     </div>
                 </div>
             </div>
@@ -65,54 +87,70 @@
                 </h3>
                 <div class="row g-4">
                     <div class="col-lg-6">
-                        <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
+                        <div class="card h-100 border-0 shadow-lg"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
                             <div class="card-body p-4">
                                 <div class="d-flex align-items-center mb-3">
-                                    <div class="me-3" style="width: 40px; height: 40px; background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="me-3"
+                                        style="width: 40px; height: 40px; background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i class="bi bi-search text-white"></i>
                                     </div>
                                     <h5 class="card-title mb-0" style="color: #0ea5e9;">Advanced Search</h5>
                                 </div>
-                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Search by brand names, product codes, manufacturers, product class, and date ranges with flexible partial matching and case-insensitive search capabilities.</p>
+                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Search by brand names,
+                                    product codes, manufacturers, product class, and date ranges with flexible partial
+                                    matching and case-insensitive search capabilities.</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-6">
-                        <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
+                        <div class="card h-100 border-0 shadow-lg"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
                             <div class="card-body p-4">
                                 <div class="d-flex align-items-center mb-3">
-                                    <div class="me-3" style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981 0%, #34d399 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="me-3"
+                                        style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981 0%, #34d399 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i class="bi bi-graph-up text-white"></i>
                                     </div>
                                     <h5 class="card-title mb-0" style="color: #10b981;">Analytics Dashboard</h5>
                                 </div>
-                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Comprehensive analytics with demographic summaries, event type distributions, manufacturer analysis, and interactive charts with modern multi-select filters.</p>
+                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Comprehensive analytics
+                                    with demographic summaries, event type distributions, manufacturer analysis, and
+                                    interactive charts with modern multi-select filters.</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-6">
-                        <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
+                        <div class="card h-100 border-0 shadow-lg"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
                             <div class="card-body p-4">
                                 <div class="d-flex align-items-center mb-3">
-                                    <div class="me-3" style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="me-3"
+                                        style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i class="bi bi-file-earmark-excel text-white"></i>
                                     </div>
                                     <h5 class="card-title mb-0" style="color: #f59e0b;">Advanced Data Export</h5>
                                 </div>
-                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Professional data exports with optimized sheets: Events (with integrated MDR texts), Summary, and fast Raw Data export in original API structure (ZIP with 5 CSV files).</p>
+                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Professional data exports
+                                    with optimized sheets: Events (with integrated MDR texts), Summary, and fast Raw
+                                    Data export in original API structure (ZIP with 5 CSV files).</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-lg-6">
-                        <div class="card h-100 border-0 shadow-lg" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
+                        <div class="card h-100 border-0 shadow-lg"
+                            style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3; transition: transform 0.2s;">
                             <div class="card-body p-4">
                                 <div class="d-flex align-items-center mb-3">
-                                    <div class="me-3" style="width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="me-3"
+                                        style="width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                         <i class="bi bi-shield-check text-white"></i>
                                     </div>
                                     <h5 class="card-title mb-0" style="color: #ef4444;">Safety Focus</h5>
                                 </div>
-                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Designed specifically for medical device safety research and signal detection in healthcare settings with comprehensive data validation.</p>
+                                <p class="card-text" style="color: #6b7280; line-height: 1.6;">Designed specifically for
+                                    medical device safety research and signal detection in healthcare settings with
+                                    comprehensive data validation.</p>
                             </div>
                         </div>
                     </div>
@@ -123,10 +161,12 @@
         <!-- Search Capabilities -->
         <div class="row mb-5">
             <div class="col-lg-10 mx-auto">
-                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+                <div class="card shadow-lg border-0"
+                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
                     <div class="card-body p-5">
                         <div class="d-flex align-items-center mb-4">
-                            <div class="me-3" style="width: 50px; height: 50px; background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <div class="me-3"
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-search-heart text-white" style="font-size: 1.5rem;"></i>
                             </div>
                             <h3 class="card-title mb-0" style="color: #8b5cf6;">Search Capabilities</h3>
@@ -135,21 +175,31 @@
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-3" style="color: #374151;">Search Fields</h6>
                                 <ul class="list-unstyled">
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Brand Name(s) - Partial matching</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Product Code(s) - FDA codes</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Manufacturer(s) - Company names</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Product Class(es) - Generic names</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Date Range - Start/End dates</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Brand Name(s) - Partial matching</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Product Code(s) - FDA codes</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Manufacturer(s) - Company names</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Product Class(es) - Generic names</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Date Range - Start/End dates</span></li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-3" style="color: #374151;">Search Features</h6>
                                 <ul class="list-unstyled">
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Case-insensitive search</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Partial word matching</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Multiple values per field</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Flexible date ranges</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Cumulative search results</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Case-insensitive search</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Partial word matching</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Multiple values per field</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Flexible date ranges</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Cumulative search results</span></li>
                                 </ul>
                             </div>
                         </div>
@@ -161,10 +211,12 @@
         <!-- Technical Details -->
         <div class="row mb-5">
             <div class="col-lg-10 mx-auto">
-                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+                <div class="card shadow-lg border-0"
+                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
                     <div class="card-body p-5">
                         <div class="d-flex align-items-center mb-4">
-                            <div class="me-3" style="width: 50px; height: 50px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <div class="me-3"
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-code-slash text-white" style="font-size: 1.5rem;"></i>
                             </div>
                             <h3 class="card-title mb-0" style="color: #059669;">Technical Details</h3>
@@ -173,22 +225,33 @@
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-3" style="color: #374151;">Backend Technology</h6>
                                 <ul class="list-unstyled">
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Python Flask Framework</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">FDA openFDA API Integration</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">SQLite Database</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Pandas Data Processing</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Data Export (openpyxl)</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Python Flask Framework</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">FDA openFDA API Integration</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">SQLite Database</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Pandas Data Processing</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Data Export (openpyxl)</span></li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-3" style="color: #374151;">Frontend Technology</h6>
                                 <ul class="list-unstyled">
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Bootstrap 5 Framework</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Responsive Design</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Interactive Charts</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Modern multi-select filters</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Real-time console messaging</span></li>
-                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span style="color: #6b7280;">Modern UI/UX</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Bootstrap 5 Framework</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Responsive Design</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Interactive Charts</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Modern multi-select filters</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Real-time console messaging</span></li>
+                                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
+                                            style="color: #6b7280;">Modern UI/UX</span></li>
                                 </ul>
                             </div>
                         </div>
@@ -200,18 +263,27 @@
         <!-- Data Source -->
         <div class="row mb-5">
             <div class="col-lg-10 mx-auto">
-                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+                <div class="card shadow-lg border-0"
+                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
                     <div class="card-body p-5">
                         <div class="d-flex align-items-center mb-4">
-                            <div class="me-3" style="width: 50px; height: 50px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <div class="me-3"
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-database text-white" style="font-size: 1.5rem;"></i>
                             </div>
                             <h3 class="card-title mb-0" style="color: #7c3aed;">Data Source</h3>
                         </div>
-                        <p class="mb-4" style="color: #6b7280; line-height: 1.7;">MAUDEMetrics utilizes the <strong>FDA's openFDA API</strong> to access the MAUDE (Manufacturer and User Facility Device Experience) database, which contains reports of adverse events involving medical devices.</p>
-                        <div class="alert alert-info border-0" style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); border-left: 4px solid #3b82f6;">
+                        <p class="mb-4" style="color: #6b7280; line-height: 1.7;">MAUDEMetrics utilizes the
+                            <strong>FDA's openFDA API</strong> to access the MAUDE (Manufacturer and User Facility
+                            Device Experience) database, which contains reports of adverse events involving medical
+                            devices.
+                        </p>
+                        <div class="alert alert-info border-0"
+                            style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); border-left: 4px solid #3b82f6;">
                             <i class="bi bi-info-circle me-2" style="color: #3b82f6;"></i>
-                            <strong style="color: #1e40af;">Powered by openFDA:</strong> <span style="color: #374151;">This application uses the openFDA API but is not endorsed by or affiliated with the FDA.</span>
+                            <strong style="color: #1e40af;">Powered by openFDA:</strong> <span
+                                style="color: #374151;">This application uses the openFDA API but is not endorsed by or
+                                affiliated with the FDA.</span>
                         </div>
                     </div>
                 </div>
@@ -221,16 +293,23 @@
         <!-- Research Disclaimer -->
         <div class="row mb-5">
             <div class="col-lg-10 mx-auto">
-                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #fef3c7 0%, #fefce8 100%); border: 1px solid #fbbf24;">
+                <div class="card shadow-lg border-0"
+                    style="background: linear-gradient(135deg, #fef3c7 0%, #fefce8 100%); border: 1px solid #fbbf24;">
                     <div class="card-body p-5">
                         <div class="d-flex align-items-center mb-4">
-                            <div class="me-3" style="width: 50px; height: 50px; background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <div class="me-3"
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-exclamation-triangle text-white" style="font-size: 1.5rem;"></i>
                             </div>
                             <h3 class="card-title mb-0" style="color: #d97706;">Important Disclaimer</h3>
                         </div>
-                        <div class="alert alert-warning border-0 mb-0" style="background: linear-gradient(135deg, #fef3c7 0%, #fefce8 100%); border-left: 4px solid #f59e0b;">
-                            <strong style="color: #d97706;">Research and Educational Purposes Only:</strong> <span style="color: #92400e;">MAUDEMetrics is designed for research and educational purposes. The data and analysis provided should not be used for clinical decision-making or patient care decisions. Always consult with qualified healthcare professionals for medical advice.</span>
+                        <div class="alert alert-warning border-0 mb-0"
+                            style="background: linear-gradient(135deg, #fef3c7 0%, #fefce8 100%); border-left: 4px solid #f59e0b;">
+                            <strong style="color: #d97706;">Research and Educational Purposes Only:</strong> <span
+                                style="color: #92400e;">MAUDEMetrics is designed for research and educational purposes.
+                                The data and analysis provided should not be used for clinical decision-making or
+                                patient care decisions. Always consult with qualified healthcare professionals for
+                                medical advice.</span>
                         </div>
                     </div>
                 </div>
@@ -240,19 +319,25 @@
         <!-- License Information -->
         <div class="row mb-5">
             <div class="col-lg-10 mx-auto">
-                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+                <div class="card shadow-lg border-0"
+                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
                     <div class="card-body p-5">
                         <div class="d-flex align-items-center mb-4">
-                            <div class="me-3" style="width: 50px; height: 50px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <div class="me-3"
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-file-earmark-text text-white" style="font-size: 1.5rem;"></i>
                             </div>
                             <h3 class="card-title mb-0" style="color: #1e3a8a;">License & Attribution</h3>
                         </div>
-                        <p class="mb-4" style="color: #6b7280; line-height: 1.7;">MAUDEMetrics is released under the <strong>Apache License, Version 2.0</strong>, providing you with the freedom to use, modify, and distribute this software.</p>
+                        <p class="mb-4" style="color: #6b7280; line-height: 1.7;">MAUDEMetrics is released under the
+                            <strong>Apache License, Version 2.0</strong>, providing you with the freedom to use, modify,
+                            and distribute this software.
+                        </p>
                         <div class="row">
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-2" style="color: #374151;">Copyright</h6>
-                                <p class="mb-3" style="color: #6b7280;">© 2025 Mohamed Marouf, MD</p>
+                                <p class="mb-3" style="color: #6b7280;">© <span class="currentYear"></span> Mohamed
+                                    Marouf, MD</p>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-2" style="color: #374151;">License</h6>
@@ -263,13 +348,19 @@
                             <div class="col-12">
                                 <h6 class="fw-bold mb-3" style="color: #374151;">Citation</h6>
                                 <p class="mb-3" style="color: #6b7280;">
-                                    <a href="https://doi.org/10.5281/zenodo.16691960" target="_blank" class="text-decoration-none" style="color: #3b82f6;">
+                                    <a href="https://doi.org/10.5281/zenodo.16691960" target="_blank"
+                                        class="text-decoration-none" style="color: #3b82f6;">
                                         <i class="bi bi-link-45deg me-1"></i>DOI: 10.5281/zenodo.16691960
                                     </a>
                                 </p>
-                                <div class="alert alert-light border-0 mt-3" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
+                                <div class="alert alert-light border-0 mt-3"
+                                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
                                     <h6 class="fw-bold mb-2" style="color: #374151;">How to Cite MAUDEMetrics:</h6>
-                                    <p class="mb-0 small" style="color: #6b7280;">Marouf, M. (2025). MAUDEMetrics: A Web-Based Tool for Automated Extraction and Analysis of FDA MAUDE Device Reports (v2.1.0). Zenodo. <a href="https://doi.org/10.5281/zenodo.16691960" target="_blank" style="color: #3b82f6;">https://doi.org/10.5281/zenodo.16691960</a></p>
+                                    <p class="mb-0 small" style="color: #6b7280;">Marouf, M. (2025). MAUDEMetrics: A
+                                        Web-Based Tool for Automated Extraction and Analysis of FDA MAUDE Device Reports
+                                        (v2.1.1). Zenodo. <a href="https://doi.org/10.5281/zenodo.16691960"
+                                            target="_blank"
+                                            style="color: #3b82f6;">https://doi.org/10.5281/zenodo.16691960</a></p>
                                 </div>
                             </div>
                         </div>
@@ -278,23 +369,30 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- Footer -->
     <footer class="custom-footer text-center mt-5 pt-4 border-top">
         <div class="footer-author mb-1">
-            Developed by <a href="https://mohamedmaroufmd.github.io" target="_blank" class="footer-link">Mohamed Marouf, MD</a>
+            &copy; <span class="currentYear"></span> Developed by <a href="https://mohamedmaroufmd.github.io"
+                target="_blank" class="footer-link">Mohamed Marouf, MD</a>
             &nbsp;|&nbsp;
             <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics" target="_blank" class="footer-link">
                 <i class="bi bi-github"></i> Project GitHub
             </a>
         </div>
+        <script>
+            document.querySelectorAll('.currentYear').forEach(el => el.textContent = new Date().getFullYear());
+        </script>
         <div class="footer-disclaimer small text-muted">
             <span class="me-1" style="font-size:1.1em;">&#9888;&#65039;</span>
             For research and educational purposes only. Not for clinical decision-making.
         </div>
-        <div class="small text-muted">Powered by <a href="https://open.fda.gov/" target="_blank">openFDA</a> | Apache 2.0 License</div>
+        <div class="small text-muted">Powered by <a href="https://open.fda.gov/" target="_blank">openFDA</a> | Apache
+            2.0 License</div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-</html> 
+
+</html>
