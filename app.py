@@ -37,6 +37,10 @@ app.secret_key = 'replace_this_with_a_random_secret_key_12345'
 
 DATABASE = 'fda_data.db'
 
+# FDA API Key (optional - get one free at https://open.fda.gov/apis/authentication/)
+# Set via environment variable or hardcode below
+FDA_API_KEY = os.environ.get('FDA_API_KEY', '')
+
 # Global message queues for real-time updates
 extraction_messages = Queue()
 export_messages = Queue()
@@ -159,58 +163,241 @@ def init_db():
         conn.commit()
 
 # Enhanced fetch function with pagination and real-time logging
-def fetch_all_API_data(base_query, max_records=None):
-    all_data = []
-    skip = 0
-    limit = 1000  # Maximum allowed by FDA API
+def _api_url(base_query, api_key=None, **params):
+    """Build FDA API URL, appending API key if available."""
+    url = base_query
+    for k, v in params.items():
+        url += f"&{k}={v}"
+    key_to_use = api_key or FDA_API_KEY
+    if key_to_use:
+        url += f"&api_key={key_to_use}"
+    return url
+
+def _extract_next_url(response):
+    """Extract the next page URL from the Link response header.
     
-    log_extraction_message("Starting FDA API data extraction...")
+    The openFDA API returns a Link header like:
+      Link: <https://api.fda.gov/...&search_after=...>; rel="next"
+    Returns the URL string or None if no next page.
+    """
+    link_header = response.headers.get('Link', '')
+    if not link_header:
+        return None
+    # Parse Link header: <URL>; rel="next"
+    import re
+    match = re.search(r'<([^>]+)>;\s*rel="next"', link_header, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+def _fetch_with_retry(url, max_retries=3, timeout=60):
+    """Fetch a URL with exponential backoff retry logic.
     
-    # Get total count from first API call
-    total_count = 0
-    first_response = requests.get(f"{base_query}&limit=1")
-    if first_response.status_code == 200:
-        first_data = first_response.json()
-        total_count = first_data.get('meta', {}).get('results', {}).get('total', 0)
-        log_extraction_message(f"Found {total_count:,} total records available in FDA database")
-    
-    while True:
-        query = f"{base_query}&limit={limit}&skip={skip}"
-        current_batch = skip + limit
-        if total_count > 0:
-            log_extraction_message(f"Fetching records {skip + 1:,} to {min(current_batch, total_count):,} of {total_count:,}...")
-        else:
-            log_extraction_message(f"Fetching records {skip + 1:,} to {current_batch:,}...")
-        
-        response = requests.get(query)
-        if response.status_code != 200:
-            log_extraction_message(f"Error fetching data: {response.status_code}")
-            break
+    Returns (response, error_msg). response is None on total failure.
+    """
+    response = None
+    for attempt in range(max_retries):
+        try:
+            print(f"API request (attempt {attempt + 1}): {url[:120]}...")
+            response = requests.get(url, timeout=timeout)
+            print(f"API response status: {response.status_code}")
             
+            if response.status_code == 200:
+                return response, None
+            elif response.status_code == 429:
+                wait_time = 2 ** (attempt + 1)
+                log_extraction_message(f"Rate limited by FDA API. Waiting {wait_time}s before retry...")
+                print(f"Rate limited. Waiting {wait_time}s...")
+                time.sleep(wait_time)
+            elif response.status_code == 404:
+                error_body = response.text[:500]
+                log_extraction_message(f"FDA API returned 404 (no more data): {error_body}")
+                print(f"FDA API 404: {error_body}")
+                return response, "404"
+            else:
+                error_body = response.text[:500]
+                log_extraction_message(f"API error (attempt {attempt + 1}/{max_retries}): HTTP {response.status_code} - {error_body}")
+                print(f"API error (attempt {attempt + 1}): HTTP {response.status_code} - {error_body}")
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** (attempt + 1)
+                    time.sleep(wait_time)
+        except requests.exceptions.RequestException as e:
+            log_extraction_message(f"Network error (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            print(f"Network error (attempt {attempt + 1}): {str(e)}")
+            if attempt < max_retries - 1:
+                wait_time = 2 ** (attempt + 1)
+                time.sleep(wait_time)
+            response = None
+    
+    error_msg = f"Failed to fetch data after {max_retries} attempts"
+    if response is not None:
+        error_msg += f" (HTTP {response.status_code}: {response.text[:200]})"
+    return None, error_msg
+
+def fetch_all_API_data(base_query, max_records=None, api_key=None):
+    """Fetch all records from the FDA API using search_after cursor-based pagination.
+    
+    Uses the openFDA 'search_after' feature (via Link header) to paginate through
+    unlimited result sets. Falls back to skip-based pagination if search_after
+    is not available.
+    
+    Preserves: API key batching, retry logic, progress logging, max_records, 
+    partial data on failure.
+    """
+    all_data = []
+    key_to_use = api_key or FDA_API_KEY
+    limit = 1000 if key_to_use else 500
+    max_retries = 3
+    
+    if key_to_use:
+        log_extraction_message("Using FDA API key for faster extraction (1000 records per batch)...")
+    else:
+        log_extraction_message("No FDA API key provided. Downloading 500 records per batch. For 2x faster downloads, paste a free API key into the search form above.")
+    log_extraction_message("Starting FDA API data extraction (using search_after pagination)...")
+    print("Starting FDA API data extraction (search_after mode)...")
+    
+    # Get total count from a lightweight initial call
+    total_count = 0
+    try:
+        count_url = _api_url(base_query, api_key=key_to_use, limit=1)
+        count_response = requests.get(count_url, timeout=30)
+        print(f"Count query response status: {count_response.status_code}")
+        if count_response.status_code == 200:
+            count_data = count_response.json()
+            total_count = count_data.get('meta', {}).get('results', {}).get('total', 0)
+            log_extraction_message(f"Found {total_count:,} total records available in FDA database")
+            print(f"Found {total_count:,} total records available in FDA database")
+        else:
+            error_body = count_response.text[:500]
+            log_extraction_message(f"Error on initial count query: HTTP {count_response.status_code} - {error_body}")
+            print(f"Error on initial count query: HTTP {count_response.status_code} - {error_body}")
+    except requests.exceptions.RequestException as e:
+        log_extraction_message(f"Network error on initial count query: {str(e)}")
+        print(f"Network error on initial count query: {str(e)}")
+    
+    # --- Try search_after pagination first ---
+    # Build the first request URL with sort (required for search_after) and NO skip
+    first_url = _api_url(base_query, api_key=key_to_use, limit=limit, sort="date_received:desc")
+    next_url = first_url
+    page_number = 0
+    use_search_after = True  # Will flip to False if we need to fall back
+    
+    while next_url:
+        page_number += 1
+        records_so_far = len(all_data)
+        
+        if total_count > 0:
+            log_extraction_message(f"Fetching page {page_number}: records {records_so_far + 1:,} to {min(records_so_far + limit, total_count):,} of {total_count:,}...")
+        else:
+            log_extraction_message(f"Fetching page {page_number}: records {records_so_far + 1:,} to {records_so_far + limit:,}...")
+        
+        response, error_msg = _fetch_with_retry(next_url, max_retries=max_retries)
+        
+        if response is None or response.status_code != 200:
+            if error_msg:
+                log_extraction_message(error_msg)
+                print(error_msg)
+            # On first page failure with search_after, fall back to skip-based
+            if page_number == 1 and use_search_after:
+                log_extraction_message("search_after pagination failed on first request. Falling back to skip-based pagination...")
+                print("Falling back to skip-based pagination...")
+                use_search_after = False
+                break
+            # Otherwise, return what we have
+            if all_data:
+                log_extraction_message(f"Returning {len(all_data):,} records collected before the error")
+                print(f"Returning {len(all_data):,} records collected before error")
+            break
+        
         data = response.json()
         results = data.get('results', [])
         
         if not results:
             log_extraction_message("No more results found")
+            print("No more results in response")
             break
-            
+        
         all_data.extend(results)
         if total_count > 0:
             log_extraction_message(f"Retrieved {len(results):,} records (Progress: {len(all_data):,}/{total_count:,})")
         else:
             log_extraction_message(f"Retrieved {len(results):,} records (Total: {len(all_data):,})")
+        print(f"Total collected so far: {len(all_data):,}")
         
-        # Check if we've reached the maximum or if there are no more results
-        total_results = data.get('meta', {}).get('results', {}).get('total', 0)
-        if skip + limit >= total_results or (max_records and len(all_data) >= max_records):
+        # Check if we hit max_records
+        if max_records and len(all_data) >= max_records:
+            log_extraction_message(f"Reached max_records limit ({max_records:,})")
             break
-            
-        skip += limit
+        
+        # Extract next page URL from Link header
+        next_url = _extract_next_url(response)
+        if not next_url:
+            log_extraction_message("No more pages (Link header absent — last page reached)")
+            print("No Link header in response — reached last page")
+            break
+        
+        # Inject API key into the next URL if not already present
+        if key_to_use and f"api_key=" not in next_url:
+            separator = "&" if "?" in next_url else "?"
+            next_url += f"{separator}api_key={key_to_use}"
+        
+        # Small delay to avoid rate limiting
+        time.sleep(0.3)
     
+    # --- Fallback: skip-based pagination (if search_after failed on page 1) ---
+    if not use_search_after and not all_data:
+        log_extraction_message("Using skip-based pagination (26,000 record limit)...")
+        print("Using skip-based pagination fallback...")
+        skip = 0
+        
+        while True:
+            query = _api_url(base_query, api_key=key_to_use, limit=limit, skip=skip)
+            current_batch = skip + limit
+            if total_count > 0:
+                log_extraction_message(f"Fetching records {skip + 1:,} to {min(current_batch, total_count):,} of {total_count:,}...")
+            else:
+                log_extraction_message(f"Fetching records {skip + 1:,} to {current_batch:,}...")
+            
+            response, error_msg = _fetch_with_retry(query, max_retries=max_retries)
+            
+            if response is None or response.status_code != 200:
+                if error_msg:
+                    log_extraction_message(error_msg)
+                    print(error_msg)
+                if all_data:
+                    log_extraction_message(f"Returning {len(all_data):,} records collected before the error")
+                    print(f"Returning {len(all_data):,} records collected before error")
+                break
+            
+            data = response.json()
+            results = data.get('results', [])
+            
+            if not results:
+                log_extraction_message("No more results found")
+                print("No more results in response")
+                break
+            
+            all_data.extend(results)
+            if total_count > 0:
+                log_extraction_message(f"Retrieved {len(results):,} records (Progress: {len(all_data):,}/{total_count:,})")
+            else:
+                log_extraction_message(f"Retrieved {len(results):,} records (Total: {len(all_data):,})")
+            print(f"Total collected so far: {len(all_data):,}")
+            
+            total_results = data.get('meta', {}).get('results', {}).get('total', 0)
+            if skip + limit >= total_results or (max_records and len(all_data) >= max_records):
+                break
+            
+            skip += limit
+            time.sleep(0.3)
+    
+    # Final summary
     if max_records and len(all_data) >= max_records:
+        all_data = all_data[:max_records]
         log_extraction_message(f"API extraction completed. Retrieved {len(all_data):,} records (limited to {max_records:,})")
     else:
         log_extraction_message(f"API extraction completed. Retrieved {len(all_data):,} records out of {total_count:,} available")
+    print(f"API extraction completed. Total records: {len(all_data):,}")
     return all_data
 
 # Enhanced save function for comprehensive data with real-time logging
@@ -218,6 +405,17 @@ def save_comprehensive_data(data):
     log_extraction_message("Starting database save operation...")
     
     with get_db_connection() as conn:
+        # Clear existing data before saving new query results
+        log_extraction_message("Clearing previous query results from database...")
+        for table in ['mdr_texts', 'patients', 'devices', 'events']:
+            conn.execute(f"DELETE FROM {table}")
+        
+        # Reset auto-increment counters if the sqlite_sequence table exists
+        try:
+            conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('events', 'devices', 'patients', 'mdr_texts')")
+        except sqlite3.OperationalError:
+            pass  # Ignore if sqlite_sequence doesn't exist yet
+            
         total_records = len(data)
         log_extraction_message(f"Processing {total_records:,} records for database storage...")
         
@@ -681,7 +879,15 @@ def export_to_excel(include_raw_events=True):
         filename = f'MAUDEMetrics_{timestamp}.xlsx'
         mdr_texts_csv = f'fda_mdr_texts_full_{timestamp}.csv'
         try:
-            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment
+            from openpyxl.cell import WriteOnlyCell
+            import numpy as np
+            
+            wb = openpyxl.Workbook(write_only=True)
+            
+            # Using if True to maintain indentation block without rewriting 400 lines
+            if True:
                 import re
                 def extract_numeric(val):
                     if pd.isnull(val):
@@ -692,28 +898,28 @@ def export_to_excel(include_raw_events=True):
 
                 
                 # 1. EVENTS - Extract only user-specified fields, event_id as first column (OPTIMIZED)
-                events_query = 'SELECT id, raw_json FROM events ORDER BY id'
-                events_df = pd.read_sql_query(events_query, conn)
-                total_events = len(events_df)
+                total_events = conn.execute("SELECT COUNT(*) as count FROM events").fetchone()['count']
                 log_export_message(f"Processing {total_events:,} events for export...")
-                print('Events DataFrame shape:', events_df.shape)
                 
-                # OPTIMIZATION 1: Pre-compile regex patterns for better performance
-                import re
-                date_pattern = re.compile(r'^\d{8}$')
-                age_pattern = re.compile(r'\s*(YR|YEARS|YEAR|YRS)\s*', re.IGNORECASE)
-                number_pattern = re.compile(r'\d+')
+                import gc
+                cursor = conn.cursor()
+                cursor.execute('SELECT id, raw_json FROM events ORDER BY id')
                 
-                # OPTIMIZATION 2: Use list comprehension instead of append for better performance
                 all_events_data = []
-                for _, row in events_df.iterrows():
-                    if row['raw_json']:
-                        try:
-                            event = json.loads(row['raw_json'])
-                            extracted = extract_event_fields(event, field_list, event_id=row['id'])
-                            all_events_data.append(extracted)
-                        except Exception as e:
-                            all_events_data.append({'event_id': row['id'], 'error': str(e)})
+                chunk_size = 5000
+                while True:
+                    rows = cursor.fetchmany(chunk_size)
+                    if not rows:
+                        break
+                    for row in rows:
+                        if row['raw_json']:
+                            try:
+                                event = json.loads(row['raw_json'])
+                                extracted = extract_event_fields(event, field_list, event_id=row['id'])
+                                all_events_data.append(extracted)
+                            except Exception as e:
+                                all_events_data.append({'event_id': row['id'], 'error': str(e)})
+                    gc.collect()
                 
                 if not all_events_data:
                     raise Exception('No data to export. Please run a search and try again.')
@@ -749,10 +955,15 @@ def export_to_excel(include_raw_events=True):
                     if include_raw_events:
                         log_export_message("Writing Raw_Events sheet to Excel...")
                         print("Writing Raw_Events sheet to Excel...")
-                        events_flat_df.to_excel(writer, sheet_name='Raw_Events', index=False)
-                    else:
-                        # Skip Raw_Events sheet for better performance (no console message)
-                        pass
+                        ws_raw = wb.create_sheet('Raw_Events')
+                        import numpy as np
+                        events_flat_df_clean = events_flat_df.replace({np.nan: ''})
+                        ws_raw.append(list(events_flat_df_clean.columns))
+                        for row in events_flat_df_clean.itertuples(index=False, name=None):
+                            ws_raw.append(row)
+                        del events_flat_df_clean
+                        import gc
+                        gc.collect()
                 
                 # --- ALWAYS CREATE EVENTS SHEET (moved outside conditional block) ---
                 # --- Restore main_fields_df construction ---
@@ -920,9 +1131,16 @@ def export_to_excel(include_raw_events=True):
                 # INTEGRATE MDR TEXTS INTO EVENTS SHEET
                 log_export_message("Integrating MDR texts into Events sheet...")
                 
-                # Get MDR texts data
-                mdr_texts_query = 'SELECT * FROM mdr_texts ORDER BY event_id, text_type_code'
-                mdr_texts_df = pd.read_sql_query(mdr_texts_query, conn)
+                # Get MDR texts data and organize into an efficient lookup dictionary
+                mdr_texts_query = 'SELECT event_id, text_type_code, text FROM mdr_texts ORDER BY event_id, text_type_code'
+                mdr_texts_dict = {}
+                cursor = conn.cursor()
+                cursor.execute(mdr_texts_query)
+                for row in cursor.fetchall():
+                    eid = row['event_id']
+                    if eid not in mdr_texts_dict:
+                        mdr_texts_dict[eid] = []
+                    mdr_texts_dict[eid].append(row)
                 
                 # Create MDR text columns for each event
                 mdr_text_columns = {}
@@ -941,8 +1159,10 @@ def export_to_excel(include_raw_events=True):
                 all_event_ids = main_fields_df[event_id_col].unique()
                 
                 for event_id in all_event_ids:
-                    # Get all MDR texts for this event
-                    event_mdr_texts = mdr_texts_df[mdr_texts_df['event_id'] == event_id]
+                    # Get all MDR texts for this event from our lightning-fast dictionary
+                    event_mdr_texts = mdr_texts_dict.get(event_id, [])
+                    if not event_mdr_texts:
+                        continue
                     
                     # Initialize text columns for this event
                     event_mdr_data = {}
@@ -950,7 +1170,7 @@ def export_to_excel(include_raw_events=True):
                     # Track count of each text type for numbering
                     text_counts = {}
                     
-                    for _, mdr_row in event_mdr_texts.iterrows():
+                    for mdr_row in event_mdr_texts:
                         text_type = mdr_row['text_type_code']
                         text_content = sanitize_text(mdr_row['text'])  # Sanitize to prevent Excel cell size limits
                         # Convert to normal case (not all caps) for better readability
@@ -992,6 +1212,10 @@ def export_to_excel(include_raw_events=True):
                     
                     mdr_text_columns[event_id] = event_mdr_data
                 
+                # Cleanup MDR texts dictionary as it's no longer needed
+                del mdr_texts_dict
+                gc.collect()
+                
                 # Get all unique MDR text column names across all events
                 all_mdr_columns = set()
                 for event_data in mdr_text_columns.values():
@@ -1017,16 +1241,30 @@ def export_to_excel(include_raw_events=True):
                 other_mdr_cols.sort()
                 mdr_column_list.extend(other_mdr_cols)
                 
-                # Add MDR text columns to the main DataFrame
-                for col_name in mdr_column_list:
-                    main_fields_df[col_name] = ''
-                
-                # Fill in the MDR text data
-                for idx, row in main_fields_df.iterrows():
-                    event_id = row[event_id_col]
-                    if event_id in mdr_text_columns:
-                        for col_name, text_content in mdr_text_columns[event_id].items():
-                            main_fields_df.at[idx, col_name] = text_content
+                # Vectorized merge of MDR texts into main DataFrame
+                # Convert our parsed dictionary into a DataFrame directly
+                if mdr_text_columns:
+                    mdr_df = pd.DataFrame.from_dict(mdr_text_columns, orient='index')
+                    
+                    # Keep only the columns we successfully ordered
+                    available_cols = [col for col in mdr_column_list if col in mdr_df.columns]
+                    mdr_df = mdr_df[available_cols]
+                    
+                    # Fast vectorized left join on event_id
+                    main_fields_df = main_fields_df.merge(
+                        mdr_df,
+                        how='left',
+                        left_on=event_id_col,
+                        right_index=True
+                    )
+                    
+                    # Clean up NaNs created by the merge
+                    for col in available_cols:
+                        main_fields_df[col] = main_fields_df[col].fillna('')
+                else:
+                    # Fallback if there are no MDR texts at all
+                    for col in mdr_column_list:
+                        main_fields_df[col] = ''
                 
                 # Apply enhanced column naming for MDR text columns
                 column_mapping = {}
@@ -1037,134 +1275,287 @@ def export_to_excel(include_raw_events=True):
                 main_fields_df = main_fields_df.rename(columns=column_mapping)
                 
                 log_export_message(f"Writing Events sheet to Excel with integrated MDR texts ({len(main_fields_df):,} rows)...")
-                main_fields_df.to_excel(writer, sheet_name='Events', index=False)
                 
-                # MDR TEXTS NOW INTEGRATED INTO EVENTS SHEET - NO SEPARATE SHEET NEEDED
-                # --- Improved All-in-One Summary Sheet ---
-                summary_blocks = []
-                # 1. Total Reports
-                total_reports = len(events_flat_df)
-                summary_blocks.append(pd.DataFrame({
-                    'Summary': ['Total Reports'],
-                    'Value': [total_reports]
-                }))
-                summary_blocks.append(pd.DataFrame({'': ['']}))
+                ws_events = wb.create_sheet('Events')
+                main_fields_df_clean = main_fields_df.replace({np.nan: ''})
                 
-                # 2. Patient Demographics Table (improved formatting)
-                demo_table = []
-                # OPTIMIZATION 6: Optimized demographic calculations
-                # Age
-                age_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_age')]
-                if age_cols:
-                    ages = pd.Series([extract_numeric(v) for v in events_flat_df[age_cols].values.flatten()]).dropna()
-                    age_val = f"{int(ages.median())} ({int(ages.min())}-{int(ages.max())})" if not ages.empty else "N/A"
-                    demo_table.append(["Age (years) median (range)", age_val, "", ""])
-                # Weight
-                weight_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_weight')]
-                if weight_cols:
-                    weights = pd.Series([extract_numeric(v) for v in events_flat_df[weight_cols].values.flatten()]).dropna()
-                    weight_val = f"{weights.median():.1f} ({weights.min():.1f}-{weights.max():.1f})" if not weights.empty else "N/A"
-                    demo_table.append(["Weight median (range)", weight_val, "", ""])
-                # Sex
-                sex_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_sex')]
-                sex_vals = pd.Series(events_flat_df[sex_cols].values.flatten()).dropna()
-                if not sex_vals.empty:
-                    first = True
-                    for k, v in sex_vals.value_counts().items():
-                        if first:
-                            demo_table.append(["Sex", k, v, f"{100*v/len(sex_vals):.1f}%"])
-                            first = False
-                        else:
-                            demo_table.append(["", k, v, f"{100*v/len(sex_vals):.1f}%"])
-                # Ethnicity
-                eth_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_ethnicity')]
-                eth_vals = pd.Series(events_flat_df[eth_cols].values.flatten()).dropna()
-                if not eth_vals.empty:
-                    first = True
-                    for k, v in eth_vals.value_counts().items():
-                        if first:
-                            demo_table.append(["Ethnicity", k, v, f"{100*v/len(eth_vals):.1f}%"])
-                            first = False
-                        else:
-                            demo_table.append(["", k, v, f"{100*v/len(eth_vals):.1f}%"])
-                # Race
-                race_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_race')]
-                race_vals = pd.Series(events_flat_df[race_cols].values.flatten()).dropna()
-                if not race_vals.empty:
-                    first = True
-                    for k, v in race_vals.value_counts().items():
-                        if first:
-                            demo_table.append(["Race", k, v, f"{100*v/len(race_vals):.1f}%"])
-                            first = False
-                        else:
-                            demo_table.append(["", k, v, f"{100*v/len(race_vals):.1f}%"])
-                demo_df = pd.DataFrame(demo_table, columns=["Patient Demographics", "Value", "Frequency", "Percentage"])
-                summary_blocks.append(demo_df)
-                summary_blocks.append(pd.DataFrame({'': ['']}))
-                # 3. Event/Product Characteristics: each table with column headers, no section header, no blank rows between
-                event_fields = [
-                    ('event_type', 'Event Type'),
-                    ('report_source_code', 'Report Source Code'),
-                    ('source_type', 'Source Type'),
-                    ('reporter_occupation_code', 'Reporter Occupation Code'),
-                    ('device_device_report_product_code', 'Product Code'),
-                    ('device_model_number', 'Model Number'),
-                    ('device_manufacturer_d_name', 'Manufacturer'),
-                    ('device_manufacturer_d_country', 'Manufacturer Country'),
-                    ('device_brand_name', 'Brand Name'),
-                    ('device_generic_name', 'Product Class')
-                ]
-                for field, label in event_fields:
-                    cols = [c for c in events_flat_df.columns if c.startswith(field)]
-                    vals = pd.Series(events_flat_df[cols].values.flatten()).dropna()
-                    if not vals.empty:
-                        counts = vals.value_counts()
-                        table_rows = []
-                        table_rows.append([label, "Frequency", "Percentage"])
-                        for v in counts.index:
-                            table_rows.append([v, counts[v], f"{100*counts[v]/len(vals):.1f}%"])
-                        event_df = pd.DataFrame(table_rows[1:], columns=table_rows[0])
-                        summary_blocks.append(event_df)
-                summary_blocks.append(pd.DataFrame({'': ['']}))
-                # 4. Device Problem Table (no table header)
-                prod_cols = [c for c in events_flat_df.columns if c.startswith('product_problems')]
-                prod_vals = pd.Series(events_flat_df[prod_cols].values.flatten()).dropna()
-                prod_counts = prod_vals.value_counts()
-                prod_table_start = None
-                if not prod_counts.empty:
-                    prod_df = pd.DataFrame({'Device Problem': prod_counts.index, 'Frequency': prod_counts.values})
-                    prod_df['Percentage'] = prod_df['Frequency'].apply(lambda v: f"{100*v/len(prod_vals):.1f}%" if len(prod_vals) else '0%')
-                    prod_table_start = len(summary_blocks)
-                    summary_blocks.append(prod_df)
-                    summary_blocks.append(pd.DataFrame({'': ['']}))
-                # 5. Patient Problem Table (no table header)
-                pprob_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_problems')]
-                pprob_vals = pd.Series(events_flat_df[pprob_cols].values.flatten()).dropna()
-                pprob_counts = pprob_vals.value_counts()
-                pprob_table_start = None
-                if not pprob_counts.empty:
-                    pprob_df = pd.DataFrame({'Patient Problem': pprob_counts.index, 'Frequency': pprob_counts.values})
-                    pprob_df['Percentage'] = pprob_df['Frequency'].apply(lambda v: f"{100*v/len(pprob_vals):.1f}%" if len(pprob_vals) else '0%')
-                    pprob_table_start = len(summary_blocks)
-                    summary_blocks.append(pprob_df)
-                    summary_blocks.append(pd.DataFrame({'': ['']}))
-                log_export_message("Creating Summary sheet with analytics...")
-                # Write all summary blocks to the Summary sheet in the same writer session
-                # Add Events Missing Patient Data at the end
-                missing_patients = pd.read_sql_query('''
-                    SELECT e.id as event_id, e.report_number
-                    FROM events e
-                    LEFT JOIN patients p ON e.id = p.event_id
-                    WHERE p.id IS NULL
-                ''', conn)
-                if not missing_patients.empty:
-                    summary_blocks.append(pd.DataFrame({'Summary': ['Events Missing Patient Data']}))
-                    missing_patients_df = missing_patients.rename(columns={
-                        'event_id': 'Event ID',
-                        'report_number': 'Report Number'
-                    })
-                    summary_blocks.append(missing_patients_df)
-                    summary_blocks.append(pd.DataFrame({'': ['']}))
+                # Formatting objects
+                header_fill = PatternFill(start_color='1072BA', end_color='1072BA', fill_type='solid')
+                header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
+                header_align = Alignment(horizontal='center', vertical='center')
+                
+                # Write formatted header using WriteOnlyCell
+                header_row = []
+                for col_name in main_fields_df_clean.columns:
+                    cell = WriteOnlyCell(ws_events, value=col_name)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_align
+                    header_row.append(cell)
+                ws_events.append(header_row)
+                
+                # Freeze pane and configure dimensions for stream
+                ws_events.freeze_panes = 'B2'
+                ws_events.sheet_properties.tabColor = '1072BA'
+                
+                # Set column dimensions
+                for col_idx, col_name in enumerate(main_fields_df_clean.columns, start=1):
+                    col_letter = openpyxl.utils.get_column_letter(col_idx)
+                    col_name_lower = str(col_name).lower()
+                    
+                    if any(w in col_name_lower for w in ['date', 'received']):
+                        ws_events.column_dimensions[col_letter].width = 14
+                    elif any(w in col_name_lower for w in ['link', 'url']):
+                        ws_events.column_dimensions[col_letter].width = 30
+                    elif any(w in col_name_lower for w in ['description of event', 'narrative', 'text']):
+                        ws_events.column_dimensions[col_letter].width = 60
+                    elif any(w in col_name_lower for w in ['description', 'problems', 'outcome', 'treatment']):
+                        ws_events.column_dimensions[col_letter].width = 30
+                    elif any(w in col_name_lower for w in ['id', 'key', 'number']):
+                        ws_events.column_dimensions[col_letter].width = 18
+                    elif any(w in col_name_lower for w in ['flag', 'code']):
+                        ws_events.column_dimensions[col_letter].width = 16
+                    else:
+                        ws_events.column_dimensions[col_letter].width = 22
+                
+                # Very fast vectorized row streaming
+                for row in main_fields_df_clean.itertuples(index=False, name=None):
+                    ws_events.append(row)
+                
+                # Free huge memory variables
+                del main_fields_df
+                del main_fields_df_clean
+                if 'events_flat_df' in locals():
+                    del events_flat_df
+                import gc
+                gc.collect()
+                
+                # Add Fields Reference sheet (fields.xlsx)
+                if os.path.exists(fields_path):
+                    ws_fields = wb.create_sheet('Fields Reference')
+                    fields_df = pd.read_excel(fields_path)
+                    fields_df_clean = fields_df.replace({np.nan: ''})
+                    ws_fields.append(list(fields_df_clean.columns))
+                    for row in fields_df_clean.itertuples(index=False, name=None):
+                        ws_fields.append(row)
+                        
+                # Flush everything to disk instantly
+                wb.save(filename)
+                
+        except Exception as e:
+            print(f"Error in export: {str(e)}")
+            raise e
+        
+        # Memory cleanup after all processing is complete
+        if 'events_flat_df' in locals():
+            del events_flat_df
+        if 'main_fields_df' in locals():
+            del main_fields_df
+        import gc
+        gc.collect()
+        
+        log_export_message(f"Export completed: {filename}")
+        print(f"Export completed: {filename}")
+        return filename
+
+def export_summary_only():
+    """
+    Export only the Summary Statistics sheet as a lightweight Excel file.
+    Much faster than the full optimized export — skips the massive Events sheet entirely.
+    """
+    import pandas as pd
+    import json
+    import os
+    import re
+    import gc
+    from datetime import datetime
+    
+    log_export_message("Starting Summary Statistics export...")
+    
+    # Field list for flattening events (same as export_to_excel)
+    field_list = [
+        'adverse_event_flag', 'product_problems', 'product_problem_flag', 'date_of_event', 'date_report', 'date_received',
+        'device_date_of_manufacturer', 'event_type', 'number_devices_in_event', 'number_patients_in_event', 'previous_use_code',
+        'remedial_action', 'removal_correction_number', 'report_number', 'single_use_flag', 'report_source_code',
+        'health_professional', 'reporter_occupation_code', 'initial_report_to_fda', 'reprocessed_and_reused_flag',
+        'device.device_event_key', 'device.date_received', 'device.brand_name',
+        'device.generic_name', 'device.device_report_product_code',
+        'device.model_number', 'device.catalog_number', 'device.lot_number', 'device.other_id_number',
+        'device.expiration_date_of_device', 'device.device_availability',
+        'device.device_evaluated_by_manufacturer', 'device.device_operator',
+        'device.implant_flag', 'device.date_removed_flag', 'device.manufacturer_d_name',
+        'device.manufacturer_d_country', 'device.device_class', 'device.device_name', 'device.fei_number',
+        'device.medical_specialty_description', 'device.registration_number',
+        'patient.date_received', 'patient.patient_age',
+        'patient.patient_sex', 'patient.patient_weight', 'patient.patient_ethnicity', 'patient.patient_race',
+        'patient.patient_problems', 'patient.sequence_number_outcome', 'patient.sequence_number_treatment',
+        'mdr_text.date_report', 'mdr_text.mdr_text_key', 'mdr_text.patient_sequence_number', 'mdr_text.text',
+        'mdr_text.text_type_code', 'type_of_report', 'date_facility_aware', 'report_date', 'report_to_fda',
+        'date_report_to_fda', 'report_to_manufacturer', 'date_report_to_manufacturer', 'event_location',
+        'manufacturer_name', 'manufacturer_address_1', 'manufacturer_address_2',
+        'manufacturer_city', 'manufacturer_country', 'manufacturer_gl_name',
+        'manufacturer_gl_country', 'date_manufacturer_received',
+        'source_type', 'event_key', 'mdr_report_key', 'device name', 'fei_number',
+        'medical_specialty_description', 'registration_number', 'regulation_number'
+    ]
+
+    def extract_numeric(val):
+        if pd.isnull(val):
+            return None
+        match = re.search(r'\d+(\.\d+)?', str(val))
+        return float(match.group()) if match else None
+
+    def enhanced_humanize(col):
+        if not isinstance(col, str):
+            return col
+        field_mapping = {
+            'event_id': 'Event ID', 'report_number': 'Report Number',
+            'event_type': 'Event Type', 'report_source_code': 'Report Source Code',
+            'source_type': 'Source Type', 'reporter_occupation_code': 'Reporter Occupation Code',
+            'device_device_report_product_code': 'Product Code', 'device_model_number': 'Model Number',
+            'device_manufacturer_d_name': 'Manufacturer', 'device_manufacturer_d_country': 'Manufacturer Country',
+            'device_brand_name': 'Brand Name', 'device_generic_name': 'Product Class',
+            'patient_patient_problems': 'Patient Problem', 'product_problems': 'Device Problem',
+        }
+        if col in field_mapping:
+            return field_mapping[col]
+        return col.replace('_', ' ').replace('.', ' ').title()
+
+    with get_db_connection() as conn:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+        filename = f'MAUDEMetrics_Summary_{timestamp}.xlsx'
+
+        # Load and flatten events
+        log_export_message("Loading events for summary statistics...")
+        events_df = pd.read_sql_query('SELECT id, raw_json FROM events ORDER BY id', conn)
+        total_events = len(events_df)
+        if total_events == 0:
+            raise Exception('No data to export. Please run a search first.')
+
+        log_export_message(f"Flattening {total_events:,} events...")
+        all_events_data = []
+        for _, row in events_df.iterrows():
+            if row['raw_json']:
+                try:
+                    event = json.loads(row['raw_json'])
+                    extracted = extract_event_fields(event, field_list, event_id=row['id'])
+                    all_events_data.append(extracted)
+                except Exception:
+                    pass
+
+        del events_df
+        gc.collect()
+
+        if not all_events_data:
+            raise Exception('No data to export. Please run a search first.')
+
+        events_flat_df = pd.DataFrame(all_events_data)
+        del all_events_data
+        gc.collect()
+        events_flat_df = sanitize_df(events_flat_df)
+
+        log_export_message("Calculating summary statistics...")
+
+        # --- Build Summary Blocks ---
+        summary_blocks = []
+
+        # 1. Total Reports
+        summary_blocks.append(pd.DataFrame({'Summary': ['Total Reports'], 'Value': [len(events_flat_df)]}))
+        summary_blocks.append(pd.DataFrame({'': ['']}))
+
+        # 2. Patient Demographics
+        demo_table = []
+        age_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_age')]
+        if age_cols:
+            ages = pd.Series([extract_numeric(v) for v in events_flat_df[age_cols].values.flatten()]).dropna()
+            age_val = f"{int(ages.median())} ({int(ages.min())}-{int(ages.max())})" if not ages.empty else "N/A"
+            demo_table.append(["Age (years) median (range)", age_val, "", ""])
+        weight_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_weight')]
+        if weight_cols:
+            weights = pd.Series([extract_numeric(v) for v in events_flat_df[weight_cols].values.flatten()]).dropna()
+            weight_val = f"{weights.median():.1f} ({weights.min():.1f}-{weights.max():.1f})" if not weights.empty else "N/A"
+            demo_table.append(["Weight median (range)", weight_val, "", ""])
+        for label, prefix in [("Sex", "patient_patient_sex"), ("Ethnicity", "patient_patient_ethnicity"), ("Race", "patient_patient_race")]:
+            cols = [c for c in events_flat_df.columns if c.startswith(prefix)]
+            vals = pd.Series(events_flat_df[cols].values.flatten()).dropna()
+            vals = vals[vals.astype(str).str.strip() != '']
+            if not vals.empty:
+                first = True
+                for k, v in vals.value_counts().items():
+                    if first:
+                        demo_table.append([label, k, v, f"{100*v/len(vals):.1f}%"])
+                        first = False
+                    else:
+                        demo_table.append(["", k, v, f"{100*v/len(vals):.1f}%"])
+        if demo_table:
+            demo_df = pd.DataFrame(demo_table, columns=["Patient Demographics", "Value", "Frequency", "Percentage"])
+            summary_blocks.append(demo_df)
+            summary_blocks.append(pd.DataFrame({'': ['']}))
+
+        # 3. Event/Product Characteristics
+        event_fields = [
+            ('event_type', 'Event Type'), ('report_source_code', 'Report Source Code'),
+            ('source_type', 'Source Type'), ('reporter_occupation_code', 'Reporter Occupation Code'),
+            ('device_device_report_product_code', 'Product Code'), ('device_model_number', 'Model Number'),
+            ('device_manufacturer_d_name', 'Manufacturer'), ('device_manufacturer_d_country', 'Manufacturer Country'),
+            ('device_brand_name', 'Brand Name'), ('device_generic_name', 'Product Class')
+        ]
+        for field, label in event_fields:
+            cols = [c for c in events_flat_df.columns if c.startswith(field)]
+            vals = pd.Series(events_flat_df[cols].values.flatten()).dropna()
+            vals = vals[vals.astype(str).str.strip() != '']
+            if not vals.empty:
+                counts = vals.value_counts()
+                table_rows = [[label, "Frequency", "Percentage"]]
+                for v in counts.index:
+                    table_rows.append([v, counts[v], f"{100*counts[v]/len(vals):.1f}%"])
+                event_df = pd.DataFrame(table_rows[1:], columns=table_rows[0])
+                summary_blocks.append(event_df)
+        summary_blocks.append(pd.DataFrame({'': ['']}))
+
+        # 4. Device Problem Table
+        prod_cols = [c for c in events_flat_df.columns if c.startswith('product_problems')]
+        prod_vals = pd.Series(events_flat_df[prod_cols].values.flatten()).dropna()
+        prod_vals = prod_vals[prod_vals.astype(str).str.strip() != '']
+        prod_counts = prod_vals.value_counts()
+        if not prod_counts.empty:
+            prod_df = pd.DataFrame({'Device Problem': prod_counts.index, 'Frequency': prod_counts.values})
+            prod_df['Percentage'] = prod_df['Frequency'].apply(lambda v: f"{100*v/len(prod_vals):.1f}%" if len(prod_vals) else '0%')
+            summary_blocks.append(prod_df)
+            summary_blocks.append(pd.DataFrame({'': ['']}))
+
+        # 5. Patient Problem Table
+        pprob_cols = [c for c in events_flat_df.columns if c.startswith('patient_patient_problems')]
+        pprob_vals = pd.Series(events_flat_df[pprob_cols].values.flatten()).dropna()
+        pprob_vals = pprob_vals[pprob_vals.astype(str).str.strip() != '']
+        pprob_counts = pprob_vals.value_counts()
+        if not pprob_counts.empty:
+            pprob_df = pd.DataFrame({'Patient Problem': pprob_counts.index, 'Frequency': pprob_counts.values})
+            pprob_df['Percentage'] = pprob_df['Frequency'].apply(lambda v: f"{100*v/len(pprob_vals):.1f}%" if len(pprob_vals) else '0%')
+            summary_blocks.append(pprob_df)
+            summary_blocks.append(pd.DataFrame({'': ['']}))
+
+        # Free the big DataFrame
+        del events_flat_df
+        gc.collect()
+
+        # 6. Events Missing Patient Data
+        missing_patients = pd.read_sql_query('''
+            SELECT e.id as event_id, e.report_number
+            FROM events e
+            LEFT JOIN patients p ON e.id = p.event_id
+            WHERE p.id IS NULL
+        ''', conn)
+        if not missing_patients.empty:
+            summary_blocks.append(pd.DataFrame({'Summary': ['Events Missing Patient Data']}))
+            missing_patients_df = missing_patients.rename(columns={'event_id': 'Event ID', 'report_number': 'Report Number'})
+            summary_blocks.append(missing_patients_df)
+            summary_blocks.append(pd.DataFrame({'': ['']}))
+
+        # --- Write to Excel ---
+        log_export_message("Writing Summary sheet to Excel...")
+        try:
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
                 startrow = 0
                 table_starts = []
                 for block in summary_blocks:
@@ -1172,38 +1563,79 @@ def export_to_excel(include_raw_events=True):
                     table_starts.append(startrow)
                     block.to_excel(writer, sheet_name='Summary', index=False, startrow=startrow, header=True)
                     startrow += len(block) + 2
-                # OPTIMIZATION 7: Simplified Excel formatting for better performance
-                from openpyxl.styles import PatternFill, Font
+
+                # --- In-context formatting ---
+                from openpyxl.styles import PatternFill, Font, Alignment, Side, Border
                 from openpyxl.chart import BarChart, Reference
+                from openpyxl.utils import get_column_letter
                 wb = writer.book
                 ws = wb['Summary']
-                # Color map for tables
+
+                # Tab color
+                ws.sheet_properties.tabColor = '27AE60'
+
+                # Color-code table headers
                 table_colors = ["34495E", "27AE60", "E67E22", "8E44AD", "2980B9"]
                 color_idx = 0
                 for i, start in enumerate(table_starts):
-                    # OPTIMIZATION: Only apply formatting to non-empty cells
                     for row in ws.iter_rows(min_row=start+1, max_row=start+1):
                         for cell in row:
                             if cell.value:
-                                cell.fill = PatternFill(start_color=table_colors[color_idx%len(table_colors)], end_color=table_colors[color_idx%len(table_colors)], fill_type='solid')
-                                break  # Only format first non-empty cell in row
+                                cell.fill = PatternFill(start_color=table_colors[color_idx % len(table_colors)], end_color=table_colors[color_idx % len(table_colors)], fill_type='solid')
+                                break
                     color_idx += 1
-                # Add Excel bar charts for Device Problem and Patient Problem
+
+                # Professional green header
+                header_fill = PatternFill(start_color='27AE60', end_color='27AE60', fill_type='solid')
+                header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
+                for cell in ws[1]:
+                    cell.font = header_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.fill = header_fill
+
+                ws.freeze_panes = 'B2'
+
+                # Column widths
+                for col in ws.columns:
+                    max_length = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col:
+                        try:
+                            if cell.value:
+                                max_length = max(max_length, len(str(cell.value)))
+                        except:
+                            pass
+                    ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
+
+                # Alternating row shading
+                fill1 = PatternFill(start_color='F0F8F0', end_color='F0F8F0', fill_type='solid')
+                fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
+                for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+                    fill = fill1 if i % 2 == 0 else fill2
+                    for cell in row:
+                        cell.fill = fill
+
+                # Borders
+                thin = Side(border_style="thin", color="BBBBBB")
+                border = Border(left=thin, right=thin, top=thin, bottom=thin)
+                for row in ws.iter_rows():
+                    for cell in row:
+                        cell.border = border
+
+                # --- Bar Charts ---
                 def find_table_data_range(ws, header):
-                    # Find the header row
                     for row in ws.iter_rows():
                         if row[0].value == header:
                             header_row = row[0].row
                             break
                     else:
                         return None, None
-                    # Data starts after header
                     data_start = header_row + 1
-                    # Data ends at first blank in col A
                     data_end = data_start
                     while ws[f'A{data_end}'].value:
                         data_end += 1
-                    return data_start, data_end-1
+                    return data_start, data_end - 1
+
                 # Device Problem chart
                 prod_data_start, prod_data_end = find_table_data_range(ws, "Device Problem")
                 if prod_data_start and prod_data_end > prod_data_start:
@@ -1218,8 +1650,9 @@ def export_to_excel(include_raw_events=True):
                     chart.add_data(data, titles_from_data=False)
                     chart.set_categories(cats)
                     chart.shape = 4
-                    chart.height = max(7, (prod_data_end-prod_data_start+1)*0.5)
+                    chart.height = max(7, (prod_data_end - prod_data_start + 1) * 0.5)
                     ws.add_chart(chart, f'E{prod_data_start}')
+
                 # Patient Problem chart
                 pprob_data_start, pprob_data_end = find_table_data_range(ws, "Patient Problem")
                 if pprob_data_start and pprob_data_end > pprob_data_start:
@@ -1234,174 +1667,15 @@ def export_to_excel(include_raw_events=True):
                     chart.add_data(data, titles_from_data=False)
                     chart.set_categories(cats)
                     chart.shape = 4
-                    chart.height = max(7, (pprob_data_end-pprob_data_start+1)*0.5)
+                    chart.height = max(7, (pprob_data_end - pprob_data_start + 1) * 0.5)
                     ws.add_chart(chart, f'E{pprob_data_start}')
-                # Add Fields Reference sheet (fields.xlsx)
-                if os.path.exists(fields_path):
-                    fields_df = pd.read_excel(fields_path)
-                    fields_df.to_excel(writer, sheet_name='Fields Reference', index=False)
+
         except Exception as e:
-            print(f"Error in export: {str(e)}")
+            print(f"Error in summary export: {str(e)}")
             raise e
-        # --- Excel formatting with openpyxl ---
-        from openpyxl import load_workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Side, Border
-        from openpyxl.utils import get_column_letter
-        wb = load_workbook(filename)
-        
-        # Check if we have any sheets at all
-        if not wb.sheetnames:
-            raise Exception("No sheets were created in the Excel file")
-        
-        # Ensure all main sheets are visible (only if they exist)
-        for sheet_name in ['Events', 'Summary']:
-            if sheet_name in wb.sheetnames:
-                wb[sheet_name].sheet_state = 'visible'
-        
-        # Reorder sheets using openpyxl's move_sheet (only if they exist)
-        desired_order = ['Events', 'Summary']
-        for idx, sheet_name in enumerate(desired_order):
-            if sheet_name in wb.sheetnames:
-                wb.move_sheet(wb[sheet_name], offset=idx - wb.sheetnames.index(sheet_name))
-        
-        # Color sheet tabs (only if they exist)
-        tab_colors = {
-            'Events': '1072BA',       # Blue
-            'Summary': '27AE60'       # Green
-        }
-        for sheet_name, color in tab_colors.items():
-            if sheet_name in wb.sheetnames:
-                wb[sheet_name].sheet_properties.tabColor = color
-        # Premium formatting for Events sheet (the "golden sheet")
-        if 'Events' in wb.sheetnames:
-            ws = wb['Events']
-            
-            # Professional blue header (#1072BA)
-            header_fill = PatternFill(start_color='1072BA', end_color='1072BA', fill_type='solid')
-            header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
-            
-            # Apply premium header formatting
-            for cell in ws[1]:
-                cell.font = header_font
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-                cell.fill = header_fill
-            
-            # Freeze panes for better navigation
-            ws.freeze_panes = 'B2'
-            
-            # Smart column width optimization with text wrapping
-            for col in ws.columns:
-                max_length = 0
-                col_letter = get_column_letter(col[0].column)
-                col_name = col[0].value
-                
-                # Check all cells in the column for content length (excluding header since it wraps)
-                for cell in col[1:]:  # Skip header row
-                    try:
-                        if cell.value:
-                            cell_length = len(str(cell.value))
-                            max_length = max(max_length, cell_length)
-                    except:
-                        pass
-                
-                # Set optimal width based on content type (recommended best practices)
-                if col_name and any(date_word in col_name.lower() for date_word in ['date', 'received']):
-                    # Date columns: 14px width (optimal for MM/DD/YYYY format)
-                    ws.column_dimensions[col_letter].width = 14
-                elif col_name and any(link_word in col_name.lower() for link_word in ['link', 'url']):
-                    # Link columns: 30px width (shows URL structure)
-                    ws.column_dimensions[col_letter].width = 30
-                elif col_name and any(mdr_text_word in col_name.lower() for mdr_text_word in ['description_of_event_or_problem', 'additional_manufacturer_narrative']):
-                    # MDR text columns: 60px width (long descriptive text)
-                    ws.column_dimensions[col_letter].width = 60
-                elif col_name and any(text_word in col_name.lower() for text_word in ['text', 'description', 'problems', 'outcome', 'treatment']):
-                    # Long text columns: 25px width (for detailed content)
-                    ws.column_dimensions[col_letter].width = 25
-                elif col_name and any(id_word in col_name.lower() for id_word in ['id', 'key', 'number']):
-                    # ID/Key columns: 15px width (perfect for identifiers)
-                    ws.column_dimensions[col_letter].width = 15
-                elif col_name and any(flag_word in col_name.lower() for flag_word in ['flag']):
-                    # Flag columns: 16px width (good for short categorical data)
-                    ws.column_dimensions[col_letter].width = 16
-                else:
-                    # Standard columns: 20px width (optimal for medium text)
-                    ws.column_dimensions[col_letter].width = 20
-            
-            # Professional alternating row colors (subtle gray and white)
-            fill1 = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')  # Light gray
-            fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')  # White
-            
-            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
-                fill = fill1 if i % 2 == 0 else fill2
-                for cell in row:
-                    cell.fill = fill
-            
-            # Clean, professional borders
-            thin = Side(border_style="thin", color="E0E0E0")
-            border = Border(left=thin, right=thin, top=thin, bottom=thin)
-            
-            for row in ws.iter_rows():
-                for cell in row:
-                    cell.border = border
-        
-        # Premium formatting for Summary sheet (green theme to match tab)
-        if 'Summary' in wb.sheetnames:
-            ws = wb['Summary']
-            # Professional green header (#27AE60) to match tab color
-            header_fill = PatternFill(start_color='27AE60', end_color='27AE60', fill_type='solid')
-            header_font = Font(bold=True, name='Calibri', size=12, color='FFFFFF')
-            for cell in ws[1]:
-                cell.font = header_font
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-                cell.fill = header_fill
-            # Freeze top row and first column
-            ws.freeze_panes = 'B2'
-            # Smart column width optimization
-            for col in ws.columns:
-                max_length = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    try:
-                        if cell.value:
-                            max_length = max(max_length, len(str(cell.value)))
-                    except:
-                        pass
-                ws.column_dimensions[col_letter].width = max(12, min(max_length + 2, 40))
-            # Harmonious alternating row shading (subtle green theme)
-            fill1 = PatternFill(start_color='F0F8F0', end_color='F0F8F0', fill_type='solid')  # Very light green
-            fill2 = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')  # White
-            for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
-                fill = fill1 if i % 2 == 0 else fill2
-                for cell in row:
-                    cell.fill = fill
-            # Add gridlines (borders) to all cells
-            thin = Side(border_style="thin", color="BBBBBB")
-            border = Border(left=thin, right=thin, top=thin, bottom=thin)
-            for row in ws.iter_rows():
-                for cell in row:
-                    cell.border = border
-                # After writing all summary blocks to the Summary sheet, apply cell merging for improved demographics formatting
-                # Find the start row of the demographics table
-                demo_header = "Patient Demographics"
-                demo_start = None
-                for row in ws.iter_rows():
-                    if row[0].value == demo_header:
-                        demo_start = row[0].row
-                        break
-                # Note: demo_table formatting removed as it's no longer used in the new Summary structure
-        # MDR_Texts sheet formatting removed - texts now integrated into Events sheet
-        wb.save(filename)
-        
-        # Memory cleanup after all processing is complete
-        if 'events_flat_df' in locals():
-            del events_flat_df
-        if 'main_fields_df' in locals():
-            del main_fields_df
-        import gc
-        gc.collect()
-        
-        log_export_message(f"Export completed: {filename}")
-        print(f"Export completed: {filename}")
+
+        log_export_message(f"Summary export completed: {filename}")
+        print(f"Summary export completed: {filename}")
         return filename
 
 def export_raw_events_only():
@@ -1582,6 +1856,7 @@ def index():
         end_date = request.form.get('end_date', '')
         max_records = request.form.get('max_records', '')
         manufacturer = request.form.get('manufacturer', '')
+        api_key_input = request.form.get('api_key', '').strip()
         # Remove manufacturer from search logic
         
         # Build the query
@@ -1650,21 +1925,37 @@ def index():
         
         print(f"Fetching data with query: {base_query}")
         # Fetch the first page to get the total count
-        preview_query = f"{base_query}&limit=1"
-        preview_response = requests.get(preview_query)
-        total_count = 0
-        if preview_response.status_code == 200:
-            preview_data = preview_response.json()
-            total_count = preview_data.get('meta', {}).get('results', {}).get('total', 0)
+        preview_query = _api_url(base_query, api_key=api_key_input, limit=1)
+        try:
+            preview_response = requests.get(preview_query, timeout=30)
+            total_count = 0
+            if preview_response.status_code == 200:
+                preview_data = preview_response.json()
+                total_count = preview_data.get('meta', {}).get('results', {}).get('total', 0)
+            else:
+                error_detail = preview_response.text[:300]
+                print(f"Preview query failed: HTTP {preview_response.status_code} - {error_detail}")
+                return render_template('index.html', error=f"FDA API error (HTTP {preview_response.status_code}): {error_detail}", is_fresh_start=is_fresh_start)
+        except requests.exceptions.RequestException as e:
+            print(f"Preview query network error: {str(e)}")
+            return render_template('index.html', error=f"Network error connecting to FDA API: {str(e)}", is_fresh_start=is_fresh_start)
+        
         session['total_count'] = total_count
-        data = fetch_all_API_data(base_query, max_records_int)
+        
+        try:
+            data = fetch_all_API_data(base_query, max_records_int, api_key=api_key_input)
+        except Exception as e:
+            print(f"Exception during data fetch: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return render_template('index.html', error=f"Error during data extraction: {str(e)}", is_fresh_start=is_fresh_start)
         
         if data:
             print(f"Saving {len(data)} records to database...")
             save_comprehensive_data(data)
             return redirect(url_for('results'))
         else:
-            return render_template('index.html', error="No results found or an error occurred.", is_fresh_start=is_fresh_start)
+            return render_template('index.html', error=f"No results retrieved from FDA API. Found {total_count:,} records in the database but failed to download them. Check your terminal console for detailed error logs.", is_fresh_start=is_fresh_start)
     return render_template('index.html', is_fresh_start=is_fresh_start)
 
 @app.route('/results')
@@ -1694,7 +1985,9 @@ def results():
             except Exception:
                 pass
         formatted_events.append(event)
-    total_count = session.get('total_count', None)
+    total_count = 0 if is_fresh_start else session.get('total_count', None)
+    if is_fresh_start and 'total_count' in session:
+        session['total_count'] = None
     return render_template('results.html', 
                          total_events=total_events,
                          total_devices=total_devices,
@@ -1718,6 +2011,14 @@ def export_raw_events():
         return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/zip')
     except Exception as e:
         return f"Error exporting raw events: {str(e)}", 500
+
+@app.route('/export/summary')
+def export_summary():
+    try:
+        filename = export_summary_only()
+        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        return f"Error exporting summary: {str(e)}", 500
 
 @app.route('/analytics')
 def analytics():

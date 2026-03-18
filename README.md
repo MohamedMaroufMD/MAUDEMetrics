@@ -46,7 +46,8 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Product Class Search:** Generic device names (e.g., pacemaker, stent)
 - **Date Range Filtering:** Flexible start/end date selection
 - **Multiple Values:** Separate multiple entries with commas
-- **Cumulative Results:** Build comprehensive datasets across searches
+- **API Key Integration:** Recommended for 2x faster data extraction with larger batches (1,000 vs 500 records)
+- **Advanced Pagination:** Uses `search_after` to seamlessly bypass the 25,000 record skip limit for extracting massive datasets
 
 ### 📊 Analytics Dashboard
 - **Event Type Analysis:** Distribution of adverse events
@@ -57,10 +58,10 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Interactive Chart:** Visualize event types per brand name with modern multi-select filters (checkboxes and search) for Brand Name and Event Type, powered by Choices.js
 
 ### 📈 Data Export & Reporting
-- **Multi-Sheet Export:** Professional formatting with multiple sheets
-- **Raw Events Sheet:** Complete event data for analysis
-- **Events Sheet:** Processed data with consistent formatting and integrated MDR texts
-- **Summary Sheet:** Patient demographics and event summaries
+- **Multiple Export Options:** Choose the right format for your needs
+- **Raw Data Export:** Fast extraction of complete event data in original API structure
+- **Optimized Events Export:** Processed data with consistent Excel formatting and integrated MDR texts
+- **Standalone Summary Export:** Dedicated Excel file for patient demographics and analytical summaries
 
 ## System Architecture
 
@@ -84,9 +85,10 @@ The following diagram illustrates the complete MAUDEMetrics workflow:
 ### 🔧 Technical Features
 - **Flask Backend:** Python-based web framework
 - **SQLite Database:** Local data storage and caching
-- **openFDA API Integration:** Direct FDA data access
-- **Pandas Processing:** Advanced data manipulation
-- **Excel Export:** Professional report generation
+- **openFDA API Integration:** Direct FDA data access with API Key authentication
+- **Advanced Pagination:** Implements `search_after` for robust large-scale data extraction
+- **Pandas Processing:** Advanced multi-dimensional data manipulation
+- **Excel Export:** Memory-safe `openpyxl` streaming architecture (write_only mode) with $O(1)$ lookup strategies to prevent Out-Of-Memory (OOM) failures on massive arrays.
 - **Docker Support:** Easy deployment and containerization
 - **Modern Multi-Select Filters:** Analytics dashboard uses Choices.js for user-friendly filtering by brand and event type
 
@@ -151,42 +153,44 @@ Then visit [http://localhost:5005](http://localhost:5005) in your browser.
 
 ### Usage
 
-1. **Search Setup:** Enter search criteria in any combination:
-   - **Brand Name(s):** e.g., "MiniMed 670G, Endurant II"
-   - **Product Code(s):** e.g., "MAF, KYF, MND"
-   - **Manufacturer(s):** e.g., "Medtronic, Abbott"
-   - **Product Class(es):** e.g., "pacemaker, defibrillator, stent"
-   - **Date Range:** Select start and end dates
+1.  **Search Setup:** Enter search criteria in any combination:
+    -   **Brand Name(s):** e.g., "MiniMed 670G, Endurant II"
+    -   **Product Code(s):** e.g., "MAF, KYF, MND"
+    -   **Manufacturer(s):** e.g., "Medtronic, Abbott"
+    -   **Product Class(es):** e.g., "pacemaker, defibrillator, stent"
+    -   **Date Range:** Select start and end dates
+    -   **FDA API Key (Recommended):** Get a free key from [open.fda.gov](https://open.fda.gov/apis/authentication/) and paste it in for 2x faster extraction.
 
-2. **Execute Search:** Click **Extract MAUDE Data**
+2.  **Execute Search:** Click **Extract MAUDE Data**
 
-3. **Review Results:** View recent events (last 50) in the browser or export for analysis
+3.  **Review Results:** View recent events (last 50) in the browser or export for analysis
 
-4. **Export Data:** Choose between:
-   - **Optimized Data**: Professional Excel file with formatted sheets
-   - **Raw Data (faster)**: ZIP file with 5 CSV files in original API structure
+4.  **Export Data:** Choose between:
+    -   **Optimized Data**: Professional Excel file with formatted Events sheet
+    -   **Raw Data (Fast)**: ZIP file with 5 CSV files in original API structure
+    -   **Summary Statistics (Fast)**: Standalone Excel file with analytical summaries
 
 ---
 
 ## Export & Reports
 
 ### Export Options
-- **Optimized Data Export:** Professional Excel file with 2 sheets:
+- **Optimized Data Export:** Professional Excel file containing:
   - **Events Sheet**: Comprehensive processed and cleaned event data with integrated MDR texts
-  - **Summary Sheet**: Statistical summaries, demographics, and analytics
-- **Raw Data Export (faster):** ZIP file containing 5 CSV files in original API structure:
+- **Raw Data Export (Fast):** ZIP file containing 5 CSV files in original API structure:
   - `Events.csv` - Main event data (report numbers, dates, flags)
   - `Devices.csv` - Device information (brand names, product codes, manufacturers)
   - `Patients.csv` - Patient demographics (age, sex, weight, outcomes)
   - `MDRTexts.csv` - Narrative reports (problem descriptions, manufacturer narratives)
   - `RawJSON.csv` - Complete original API responses
+- **Summary Statistics Export (Fast):** Standalone Excel file containing statistical summaries, demographics, and analytics
 
 ### Data Formatting
 - **Consistent Date Format:** All dates formatted as mm/dd/yyyy
 - **Professional Styling:** Clean, readable .xlsx formatting
 - **Multiple Formats:** Excel (.xlsx) and CSV options
 - **Data Validation:** Ensures data integrity and compatibility
-- **Performance Optimized:** Fast export for large datasets (50k+ records)
+- **Performance Optimized:** Bypasses memory exhaustion (OOM crashes) on massive datasets (50k+ records) by utilizing instantaneous zero-DOM XML streaming and chunked database cursors.
 
 ### Export Examples
 Real-world examples with 19,000+ reports are available in the [`examples/`](examples/) folder:
@@ -195,10 +199,11 @@ Real-world examples with 19,000+ reports are available in the [`examples/`](exam
 - **`MAUDEMetrics_RawData_20250907_165704.zip`** - Raw data export (20.3 MB)
 
 **File Size Comparison (19k+ Records):**
-- **Optimized Export**: 14.1 MB (Excel format with 2 sheets: Events + Summary)
+- **Optimized Export**: ~14 MB (Excel format with Events sheet only)
 - **Raw Export**: 20.3 MB (ZIP with 5 CSV files, compressed)
+- **Summary Export**: < 1 MB (Excel format with analytical summaries)
 
-*The optimized export is more compact for this dataset size, while the raw export provides complete data structure preservation and faster processing for very large datasets.*
+*The optimized export provides a clean, single-sheet view of events, while the raw export provides complete data structure preservation and faster processing for very large datasets. The standalone summary provides instant aggregate statistics.*
 
 **Usage:**
 1. Download the example files to understand the export formats
@@ -257,8 +262,14 @@ A: Make sure port 5005 is free, or change the port in `docker-compose.yml`.
 **Q: The export is empty or missing data?**  
 A: Ensure you have run a search and that the FDA API is available.
 
+**Q: Why was my export interrupted?**  
+A: Previously, very large datasets (>10,000 records) could consume significant memory and crash the application. MAUDEMetrics has since been upgraded with a **zero-DOM streaming export engine**. It now easily writes enormous datasets (e.g., 50,000+ records) directly to disk sequentially, meaning memory exhaustion is incredibly rare. If your connection is interrupted, check your FDA API key and your container logs.
+
 **Q: How do I reset the database?**  
-A: Use the "Clear All Data" button in the UI.
+A: The application automatically clears all database tables and begins a fresh start *every time* you submit a new search from the homepage. There is no longer a need to manually clear the data.
+
+**Q: Where can I get an FDA API Key?**  
+A: You can register for an API key for free at [open.fda.gov/apis/authentication/](https://open.fda.gov/apis/authentication/).
 
 **Q: Can I search for multiple manufacturers at once?**  
 A: Yes, separate multiple manufacturers with commas (e.g., "Medtronic, Abbott").
@@ -270,7 +281,7 @@ A: No, all searches are case-insensitive with partial matching.
 A: All dates are consistently formatted as mm/dd/yyyy across all sheets.
 
 **Q: What makes the Events sheet special?**  
-A: It's the premium "golden sheet" with professional formatting, smart column organization, integrated MDR texts, and optimized performance for the best user experience.
+A: It's the premium "golden sheet" (exported via Optimized Data) with professional formatting, smart column organization, integrated MDR texts, and optimized performance for the best user experience.
 
 **Q: How do I cite this software?**  
 A: Please use the citation information in the CITATION.cff file or cite the JOSS paper when published.
