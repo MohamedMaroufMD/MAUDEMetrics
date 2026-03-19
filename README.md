@@ -96,9 +96,7 @@ The following diagram illustrates the complete MAUDEMetrics workflow:
 
 ## Screenshots
 
-> _See the [GitHub repository](https://github.com/MohamedMaroufMD/MAUDEMetrics) for screenshots and sample exported files!_
-> 
-> _The analytics dashboard now features an interactive chart with modern multi-select filters (checkboxes and search) for Brand Name and Event Type._
+> _See the [GitHub repository](https://github.com/MohamedMaroufMD/MAUDEMetrics) for screenshots!_
 
 ![Home Page](screenshots/1.%20Home%20Page.png)
 
