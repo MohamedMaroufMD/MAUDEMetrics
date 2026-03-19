@@ -1,3 +1,9 @@
+---
+config:
+  look: classic
+  theme: base
+  layout: elk
+---
 flowchart TD
     classDef user fill:#4e79a7,stroke:#3d5a80,stroke-width:2px,color:white
     classDef interface fill:#59a14f,stroke:#406c35,stroke-width:2px,color:white
@@ -5,39 +11,41 @@ flowchart TD
     classDef external fill:#e15759,stroke:#b03b46,stroke-width:2px,color:white
     classDef storage fill:#76b7b2,stroke:#4a7a75,stroke-width:2px,color:black
 
-    User(("User\n(researchers, clinicians,\nquality assurance)")):::user
-    WebInterface["Web Interface\n(flask + jinja2 + bootstrap 5)"]:::interface
-    SearchEngine["Search Engine\n(brand, product code, manufacturer,\nproduct class, date range)"]:::engine
-    openFDA["openFDA API\n(device event endpoint)\n[search_after active pagination]"]:::external
-    DataProcessing["Data Processing Engine\n(Chunked Extraction + O(1) Dictionary Lookup)"]:::engine
-    SQLite[("SQLite Database\n(4 normalized tables:\nevents, devices, patients, mdr_texts)")]:::storage
+    User["User<br/>(researchers, clinicians,<br/>quality assurance)"]:::user
+    WebInterface["Web Interface<br/>(Flask + Jinja2 + Bootstrap 5)"]:::interface
+    SearchEngine["Search Engine<br/>(brand, product code,<br/>manufacturer, product class,<br/>date range, max records,<br/>optional API key)"]:::engine
+    openFDA["openFDA API<br/>(device event endpoint;<br/>search_after pagination)"]:::external
+    DataProcessing["Data Processing Engine<br/>(preview count, retry/backoff,<br/>JSON parsing, normalization)"]:::engine
+    SQLite["SQLite Database<br/>(4 normalized tables:<br/>events, devices, patients,<br/>mdr_texts)"]:::storage
 
-    ResultsEngine["Results Engine\n(triggers results display)"]:::engine
-    AnalyticsEngine["Analytics Engine\n(statistical analysis)"]:::engine
-    ExportEngine["Export Stream Engine\n(openpyxl write_only mode)"]:::engine
+    ResultsEngine["Results Engine<br/>(recent events,<br/>formatted tables)"]:::engine
+    AnalyticsEngine["Analytics Engine<br/>(demographics,<br/>frequencies, trends)"]:::engine
+    ExportEngine["Export Engine<br/>(streaming Excel,<br/>summary export,<br/>raw ZIP/CSV)"]:::engine
 
-    ResultsPage["Results Page\n(recent events)"]:::interface
-    AnalyticsDashboard["Analytics Dashboard\n(interactive visualizations,\ndemographics, trends)"]:::interface
-    ExportModule["Export Module\n(3 options:\nOptimized, Raw JSON, & Summary Stats)"]:::interface
-    DataStorage[("Data Storage\n(System file dump)")]:::storage
+    ResultsPage["Results Page<br/>(recent events)"]:::interface
+    AnalyticsDashboard["Analytics Dashboard<br/>(interactive visualizations,<br/>demographics, trends)"]:::interface
+    ExportModule["Export Module<br/>(3 options: optimized Excel,<br/>summary Excel, raw ZIP/CSV)"]:::interface
+    DataStorage["Data Storage<br/>(export files:<br/>.xlsx, .csv, .zip)"]:::storage
 
-    User -- "User query (UI)" --> WebInterface
-    WebInterface -- "Search criteria" --> SearchEngine
-    SearchEngine -- "API request" --> openFDA
-    openFDA -- "Raw JSON streams" --> DataProcessing
-    DataProcessing -- "Processed data" --> SQLite
+    User -->|"User query"| WebInterface
+    WebInterface -->|"Search criteria"| SearchEngine
+    SearchEngine -->|"API request"| openFDA
+    openFDA -->|"Raw JSON"| DataProcessing
+    DataProcessing -->|"Processed data"| SQLite
 
-    SQLite -- "Query results" --> ResultsEngine
-    SQLite -- "Analytics metrics" --> AnalyticsEngine
-    SQLite -- "Memory-safe cursors" --> ExportEngine
+    SQLite -->|"Query results"| ResultsEngine
+    SQLite -->|"Analytics"| AnalyticsEngine
+    SQLite -->|"Export"| ExportEngine
 
-    ResultsEngine -- "Formatted tables" --> ResultsPage
-    AnalyticsEngine -- "Summary metadata" --> ResultsEngine
-    AnalyticsEngine -- "Visualization data" --> AnalyticsDashboard
-    AnalyticsEngine -- "Aggregated data" --> ExportEngine
-    
-    ExportEngine -- "Memory-efficient compilation" --> ExportModule
-    ExportModule -- "Streaming save (.xlsx/.csv)" --> DataStorage
-    
-    DataProcessing -. "Real-time extraction" .-> ResultsPage
-    ExportEngine -. "Zero-DOM instant generation" .-> ExportModule
+    ResultsEngine -->|"Formatted results"| ResultsPage
+    ResultsEngine -->|"Summary data"| AnalyticsEngine
+    AnalyticsEngine -->|"Visualization data"| AnalyticsDashboard
+    AnalyticsEngine -->|"Processed dataset"| ExportEngine
+
+    ExportEngine -->|"Structured export"| ExportModule
+    ExportEngine -->|"File metadata"| DataStorage
+    ExportModule -->|"Archived exports"| DataStorage
+
+    DataProcessing -.->|"Real-time progress updates"| ResultsPage
+    DataProcessing -.->|"Raw JSON preserved"| SQLite
+    ExportEngine -.->|"Real-time export updates"| ExportModule

@@ -107,7 +107,7 @@ By automating extraction and standardizing outputs, MAUDEMetrics reduces manual 
 - **Repository**: <https://github.com/MohamedMaroufMD/MAUDEMetrics>  
 - **DOI**: <https://doi.org/10.5281/zenodo.16691960>  
 - **License**: Apache License 2.0  
-- **Version**: 2.1.0 (2025-09-08)  
+- **Version**: 3.0.0 (2026-03-19)  
 
 Detailed installation (Docker and manual), usage examples, tests, and sample exports are provided in the repository.
 
