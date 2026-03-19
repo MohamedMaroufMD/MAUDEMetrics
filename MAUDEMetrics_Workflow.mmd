@@ -1,3 +1,9 @@
+---
+config:
+  look: classic
+  theme: neutral
+  layout: elk
+---
 flowchart TD
     classDef user fill:#4e79a7,stroke:#3d5a80,stroke-width:2px,color:white
     classDef interface fill:#59a14f,stroke:#406c35,stroke-width:2px,color:white
@@ -31,13 +37,15 @@ flowchart TD
     SQLite -->|"Analytics"| AnalyticsEngine
     SQLite -->|"Export"| ExportEngine
 
-    ResultsEngine -- "Formatted tables" --> ResultsPage
-    AnalyticsEngine -- "Summary metadata" --> ResultsEngine
-    AnalyticsEngine -- "Visualization data" --> AnalyticsDashboard
-    AnalyticsEngine -- "Aggregated data" --> ExportEngine
-    
-    ExportEngine -- "Memory-efficient compilation" --> ExportModule
-    ExportModule -- "Streaming save (.xlsx/.csv)" --> DataStorage
-    
-    DataProcessing -. "Real-time extraction" .-> ResultsPage
-    ExportEngine -. "Zero-DOM instant generation" .-> ExportModule
+    ResultsEngine -->|"Formatted results"| ResultsPage
+    ResultsEngine -->|"Summary data"| AnalyticsEngine
+    AnalyticsEngine -->|"Visualization data"| AnalyticsDashboard
+    AnalyticsEngine -->|"Processed dataset"| ExportEngine
+
+    ExportEngine -->|"Structured export"| ExportModule
+    ExportEngine -->|"File metadata"| DataStorage
+    ExportModule -->|"Archived exports"| DataStorage
+
+    DataProcessing -.->|"Real-time progress updates"| ResultsPage
+    DataProcessing -.->|"Raw JSON preserved"| SQLite
+    ExportEngine -.->|"Real-time export updates"| ExportModule
