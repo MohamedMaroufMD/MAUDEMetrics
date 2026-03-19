@@ -68,7 +68,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 The following diagram illustrates the complete MAUDEMetrics workflow:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MohamedMaroufMD/MAUDEMetrics/refs/heads/main/MAUDEMetrics_Workflow.svg" alt="MAUDEMetrics Workflow" width="650"/>
+  <img src="MAUDEMetrics%20Workflow.svg" alt="MAUDEMetrics Workflow" width="650"/>
 </p>
 
 *Figure 1: Complete workflow showing data extraction, processing, and export capabilities*
