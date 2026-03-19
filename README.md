@@ -68,7 +68,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 The following diagram illustrates the complete MAUDEMetrics workflow:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MohamedMaroufMD/MAUDEMetrics/refs/heads/main/MAUDEMetrics_Workflow.svg" alt="MAUDEMetrics Workflow" width="650"/>
+  <img src="https://raw.githubusercontent.com/MohamedMaroufMD/MAUDEMetrics/refs/heads/main/MAUDEMetrics%20Workflow.png" alt="MAUDEMetrics Workflow" width="650"/>
 </p>
 
 *Figure 1: Complete workflow showing data extraction, processing, and export capabilities*
@@ -96,9 +96,7 @@ The following diagram illustrates the complete MAUDEMetrics workflow:
 
 ## Screenshots
 
-> _See the [GitHub repository](https://github.com/MohamedMaroufMD/MAUDEMetrics) for screenshots and sample exported files!_
-> 
-> _The analytics dashboard now features an interactive chart with modern multi-select filters (checkboxes and search) for Brand Name and Event Type._
+> _See the [GitHub repository](https://github.com/MohamedMaroufMD/MAUDEMetrics) for screenshots!_
 
 ![Home Page](screenshots/1.%20Home%20Page.png)
 
