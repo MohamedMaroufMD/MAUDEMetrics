@@ -620,14 +620,12 @@ def extract_event_fields(event, field_list, event_id=None):
     mdr_report_key = event.get('mdr_report_key', '')
     maude_link = ''
     if mdr_report_key:
-        # Try to get first device's product code and sequence number
+        # Try to get first device's product code
         pc = ''
-        seq = ''
         if devices and isinstance(devices, list):
             pc = devices[0].get('device_report_product_code', '')
-            seq = devices[0].get('device_sequence_number', '')
-        if pc and seq:
-            maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}&device_sequence_no={seq}"
+        if pc:
+            maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}&pc={pc}"
         else:
             maude_link = f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfmaude/detail.cfm?mdrfoi__id={mdr_report_key}"
     result['maude_report_link'] = maude_link
