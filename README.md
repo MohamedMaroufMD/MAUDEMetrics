@@ -110,7 +110,7 @@ git clone https://github.com/MohamedMaroufMD/MAUDEMetrics.git
 cd MAUDEMetrics
 
 # 2. Build and run with Docker
-docker-compose up --build
+docker compose up --build
 
 # 3. Open your browser
 open http://localhost:5005
