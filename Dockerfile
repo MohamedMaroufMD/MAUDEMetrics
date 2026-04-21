@@ -39,4 +39,4 @@ COPY static/ ./static/
 EXPOSE 5005
 
 # Command to run the application
-CMD ["python", "app.py"]
+CMD ["python", "app.py", "--host=0.0.0.0"]
