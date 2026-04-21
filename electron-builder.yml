@@ -11,8 +11,10 @@ extraResources:
 mac:
   target: dmg
   category: public.app-category.medical
+  artifactName: "${productName}.dmg"
 win:
   target: nsis
+  artifactName: "${productName}-Setup.${ext}"
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
