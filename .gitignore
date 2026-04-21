@@ -205,3 +205,11 @@ temp_exports/
 .Trashes
 ehthumbs.db
 Thumbs.db 
+
+# Node.js / Electron
+node_modules/
+dist-electron/
+backend/
+
+# PyInstaller one-file output
+*.spec

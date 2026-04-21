@@ -32,10 +32,36 @@ import time
 import threading
 from queue import Queue
 
-app = Flask(__name__)
+import sys
+import argparse
+
+# Determine paths for PyInstaller compatibility
+if getattr(sys, 'frozen', False):
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+    base_dir = sys._MEIPASS
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+template_dir = os.path.join(base_dir, 'templates')
+static_dir = os.path.join(base_dir, 'static')
+
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = 'replace_this_with_a_random_secret_key_12345'
 
-DATABASE = 'fda_data.db'
+# Parse command line arguments for Electron integration
+parser = argparse.ArgumentParser()
+parser.add_argument('--port', type=int, default=5005, help='Port to run the Flask app on')
+parser.add_argument('--host', type=str, default='127.0.0.1', help='Host to bind to (0.0.0.0 for Docker)')
+parser.add_argument('--data-dir', type=str, default='.', help='Directory to store the database')
+args, unknown = parser.parse_known_args()
+
+DATABASE = os.path.join(args.data_dir, 'fda_data.db')
+
+@app.route('/quit')
+def quit_app():
+    """Endpoint for Electron to cleanly shut down the server."""
+    os._exit(0)
+    return "Server shutting down..."
 
 # FDA API Key (optional - get one free at https://open.fda.gov/apis/authentication/)
 # Set via environment variable or hardcode below
@@ -160,6 +186,11 @@ def init_db():
             )
         ''')
         
+        # Clear any stale data from previous sessions so each launch starts fresh
+        conn.execute('DELETE FROM mdr_texts')
+        conn.execute('DELETE FROM patients')
+        conn.execute('DELETE FROM devices')
+        conn.execute('DELETE FROM events')
         conn.commit()
 
 # Enhanced fetch function with pagination and real-time logging
@@ -874,8 +905,10 @@ def export_to_excel(include_raw_events=True):
 
     with get_db_connection() as conn:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        filename = f'MAUDEMetrics_{timestamp}.xlsx'
-        mdr_texts_csv = f'fda_mdr_texts_full_{timestamp}.csv'
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        filename = os.path.join(temp_dir, f'MAUDEMetrics_{timestamp}.xlsx')
+        mdr_texts_csv = os.path.join(temp_dir, f'fda_mdr_texts_full_{timestamp}.csv')
         try:
             import openpyxl
             from openpyxl.styles import Font, PatternFill, Alignment
@@ -1421,7 +1454,9 @@ def export_summary_only():
 
     with get_db_connection() as conn:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        filename = f'MAUDEMetrics_Summary_{timestamp}.xlsx'
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        filename = os.path.join(temp_dir, f'MAUDEMetrics_Summary_{timestamp}.xlsx')
 
         # Load and flatten events
         log_export_message("Loading events for summary statistics...")
@@ -1692,7 +1727,9 @@ def export_raw_events_only():
     print("Starting Raw Data export in original API structure...")
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    base_filename = f'MAUDEMetrics_RawData_{timestamp}'
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    base_filename = os.path.join(temp_dir, f'MAUDEMetrics_RawData_{timestamp}')
     zip_filename = f'{base_filename}.zip'
     
     with get_db_connection() as conn:
@@ -1998,7 +2035,7 @@ def results():
 def export_data():
     try:
         filename = export_to_excel(include_raw_events=False)
-        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        return send_file(filename, as_attachment=True, download_name=os.path.basename(filename), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
         return f"Error exporting data: {str(e)}", 500
 
@@ -2006,7 +2043,7 @@ def export_data():
 def export_raw_events():
     try:
         filename = export_raw_events_only()
-        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/zip')
+        return send_file(filename, as_attachment=True, download_name=os.path.basename(filename), mimetype='application/zip')
     except Exception as e:
         return f"Error exporting raw events: {str(e)}", 500
 
@@ -2014,7 +2051,7 @@ def export_raw_events():
 def export_summary():
     try:
         filename = export_summary_only()
-        return send_file(filename, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        return send_file(filename, as_attachment=True, download_name=os.path.basename(filename), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
         return f"Error exporting summary: {str(e)}", 500
 
@@ -2379,4 +2416,7 @@ def database_status():
 
 if __name__ == "__main__":
     init_db()
-    app.run(host='0.0.0.0', port=5005, debug=True)
+    print(f"Flask backend starting on {args.host}:{args.port}...", flush=True)
+    # Turn off debug mode in production to avoid werkzeug reloader issues with PyInstaller
+    debug_mode = not getattr(sys, 'frozen', False)
+    app.run(host=args.host, port=args.port, debug=debug_mode, use_reloader=debug_mode)

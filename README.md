@@ -4,14 +4,53 @@
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16691960.svg)](https://doi.org/10.5281/zenodo.16691960)
-[![status](https://joss.theoj.org/papers/ff734337f3acba932276d552f9119136/status.svg)](https://joss.theoj.org/papers/ff734337f3acba932276d552f9119136)
+[![status](https://joss.theoj.org/papers/ff734337f3acba932276d552f9119136/status.svg)](https://joss.theoj.org/papers/ff734337f3acba932276d52f9119136)
 
-## Introduction
-
-**MAUDEMetrics** is a user-friendly tool for analyzing and reporting on medical device events using data from the FDA's Manufacturer and User Facility Device Experience (MAUDE) Database via the openFDA API.  
+**MAUDEMetrics** is a user-friendly tool for analyzing and reporting on medical device adverse events using data from the FDA's Manufacturer and User Facility Device Experience (MAUDE) Database via the openFDA API.  
 It enables clinicians, researchers, and quality teams to quickly fetch, explore, and export device event data for further analysis.
 
 > ⚠️ **Disclaimer:** This tool is for research and educational purposes only. Not for clinical decision-making.
+
+---
+
+## ⬇️ Download the Desktop App
+
+> **No installation required.** Download, open, and start analyzing FDA data in seconds.
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <h3>🍎 macOS</h3>
+      <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics.dmg">
+        <img src="https://img.shields.io/badge/Download-macOS%20App-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS"/>
+      </a>
+      <br/><sub>macOS 10.12+ · Apple Silicon &amp; Intel</sub>
+    </td>
+    <td align="center" width="50%">
+      <h3>🪟 Windows</h3>
+      <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-Setup.exe">
+        <img src="https://img.shields.io/badge/Download-Windows%20App-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"/>
+      </a>
+      <br/><sub>Windows 10/11 · 64-bit</sub>
+    </td>
+  </tr>
+</table>
+
+> 💡 **Tip:** The app **automatically checks for updates** from GitHub Releases. When a new version is available, you'll be prompted to update in one click — no need to re-download manually.
+
+### Installation Steps
+
+**macOS:**
+1. Click the **Download macOS App** button above.
+2. Open the downloaded `.dmg` file.
+3. Drag **MAUDEMetrics** into your Applications folder.
+4. Double-click to launch. *(On first launch: right-click → Open if macOS warns about an unverified developer.)*
+
+**Windows:**
+1. Click the **Download Windows App** button above.
+2. Run the downloaded `.exe` installer.
+3. Follow the on-screen prompts and click **Finish**.
+4. Launch MAUDEMetrics from your Start Menu or Desktop shortcut.
 
 ---
 
@@ -23,10 +62,11 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 
 ## Table of Contents
 
+- [Download the Desktop App](#️-download-the-desktop-app)
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Quick Start](#quick-start)
-- [Installation & Usage](#installation--usage)
+- [FDA API Key](#-fda-api-key-recommended)
+- [Advanced Usage (Docker / CLI)](#advanced-usage-docker--cli)
 - [Export & Reports](#export--reports)
 - [API Details](#api-details)
 - [FAQ / Troubleshooting](#faq--troubleshooting)
@@ -63,6 +103,11 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 - **Optimized Events Export:** Processed data with consistent Excel formatting and integrated MDR texts
 - **Standalone Summary Export:** Dedicated Excel file for patient demographics and analytical summaries
 
+### 🖥️ Desktop App
+- **One-Click Install:** Native macOS (.dmg) and Windows (.exe) installers — no Python or Docker required
+- **Auto-Updates:** The app checks GitHub Releases on launch and prompts you to update when a new version is available
+- **Fresh Workspace:** Every launch starts with a clean slate — no stale results from previous sessions
+
 ## System Architecture
 
 The following diagram illustrates the complete MAUDEMetrics workflow:
@@ -88,9 +133,9 @@ The following diagram illustrates the complete MAUDEMetrics workflow:
 - **openFDA API Integration:** Direct FDA data access with API Key authentication
 - **Advanced Pagination:** Implements `search_after` for robust large-scale data extraction
 - **Pandas Processing:** Advanced multi-dimensional data manipulation
-- **Excel Export:** Memory-safe `openpyxl` streaming architecture (write_only mode) with $O(1)$ lookup strategies to prevent Out-Of-Memory (OOM) failures on massive arrays.
+- **Excel Export:** Memory-safe `openpyxl` streaming architecture (write_only mode) with $O(1)$ lookup strategies to prevent Out-Of-Memory (OOM) failures on massive arrays
 - **Docker Support:** Easy deployment and containerization
-- **Modern Multi-Select Filters:** Analytics dashboard uses Choices.js for user-friendly filtering by brand and event type
+- **Electron Shell:** Wraps the app for native desktop delivery across Mac and Windows
 
 ---
 
@@ -102,7 +147,34 @@ The following diagram illustrates the complete MAUDEMetrics workflow:
 
 ---
 
-## Quick Start
+## 🔑 FDA API Key (Recommended)
+
+> **Free · Takes 1 minute · Doubles your extraction speed**
+
+MAUDEMetrics works out of the box without any account or key. However, registering for a **free FDA API key** is strongly recommended because it:
+
+| | Without API Key | With API Key |
+|---|---|---|
+| **Records per batch** | 500 | 1,000 |
+| **Extraction speed** | Standard | ~2× faster |
+| **Rate limits** | Stricter | More lenient |
+
+### How to Get Your Free API Key
+
+1. Visit [open.fda.gov/apis/authentication/](https://open.fda.gov/apis/authentication/)
+2. Click **Get API Key** and enter your name and email address.
+3. Check your inbox — your key arrives instantly.
+4. Paste it into the **FDA API Key** field in the MAUDEMetrics search form before clicking Extract.
+
+Your key is stored only in the app's search form and is **never transmitted anywhere other than directly to the FDA API**.
+
+---
+
+## Advanced Usage (Docker / CLI)
+
+> The desktop app above is the recommended way for most users. The options below are for advanced users who prefer Docker or a manual Python setup.
+
+### Quick Start with Docker
 
 ```bash
 # 1. Clone the repository
@@ -110,35 +182,20 @@ git clone https://github.com/MohamedMaroufMD/MAUDEMetrics.git
 cd MAUDEMetrics
 
 # 2. Build and run with Docker
-docker-compose up --build
+./run.sh
 
 # 3. Open your browser
 open http://localhost:5005
 ```
 
----
+### Manual Python Setup
 
-## Installation & Usage
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/get-started) installed
-- (Optional) Python 3.8+ if running locally
-
-### Manual Setup (without Docker)
-
-> **Note:** This project requires Python 3.11. Newer versions (e.g., Python 3.13) are not yet supported by all dependencies.
-
-### Prerequisites
-
-- Python 3.11 installed
-
-### Steps
+> **Note:** Requires Python 3.11. Newer versions (e.g., Python 3.13) are not yet supported by all dependencies.
 
 ```bash
-# 1. Create a virtual environment (recommended)
+# 1. Create a virtual environment
 python3.11 -m venv venv
-source venv/bin/activate
+source venv/bin/activate   # Windows: venv\Scripts\activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
@@ -203,11 +260,6 @@ Real-world examples with 19,000+ reports are available in the [`examples/`](exam
 
 *The optimized export provides a clean, single-sheet view of events, while the raw export provides complete data structure preservation and faster processing for very large datasets. The standalone summary provides instant aggregate statistics.*
 
-**Usage:**
-1. Download the example files to understand the export formats
-2. Compare the two export options to choose the best fit for your needs
-3. Use as templates for understanding the data structure before running your own extractions
-
 ---
 
 ## API Details
@@ -254,6 +306,15 @@ python -m pytest tests/  # If pytest is available
 
 ## FAQ / Troubleshooting
 
+**Q: How do I install the desktop app?**  
+A: Download the installer for your platform from the [Releases page](https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest). On macOS, open the `.dmg` and drag the app to Applications. On Windows, run the `.exe` installer and follow the prompts.
+
+**Q: macOS says "unverified developer" — is it safe?**  
+A: Yes, this is a standard macOS security prompt for apps not yet signed with a paid Apple Developer certificate. Right-click the app and select **Open** to bypass the warning.
+
+**Q: How does auto-update work?**  
+A: The desktop app checks GitHub Releases each time it launches. If a newer version is found, it downloads in the background and prompts you to restart and install — no manual re-downloading needed.
+
 **Q: Docker won't start or port is in use?**  
 A: Make sure port 5005 is free, or change the port in `docker-compose.yml`.
 
@@ -264,7 +325,7 @@ A: Ensure you have run a search and that the FDA API is available.
 A: Previously, very large datasets (>10,000 records) could consume significant memory and crash the application. MAUDEMetrics has since been upgraded with a **zero-DOM streaming export engine**. It now easily writes enormous datasets (e.g., 50,000+ records) directly to disk sequentially, meaning memory exhaustion is incredibly rare. If your connection is interrupted, check your FDA API key and your container logs.
 
 **Q: How do I reset the database?**  
-A: The application automatically clears all database tables and begins a fresh start *every time* you submit a new search from the homepage. There is no longer a need to manually clear the data.
+A: The application automatically clears all database tables on each launch and begins a fresh start every time you submit a new search. There is no longer a need to manually clear the data.
 
 **Q: Where can I get an FDA API Key?**  
 A: You can register for an API key for free at [open.fda.gov/apis/authentication/](https://open.fda.gov/apis/authentication/).
@@ -360,10 +421,10 @@ For feature requests, please describe:
 - [Flask](https://flask.palletsprojects.com/) community for documentation and support
 - [Bootstrap](https://getbootstrap.com/) for modern UI components
 - [Pandas](https://pandas.pydata.org/) for data processing capabilities
+- [Electron](https://www.electronjs.org/) for cross-platform desktop packaging
 
 ---
 
 ## Contact
 
 For questions, suggestions, or support, please [open an issue](https://github.com/MohamedMaroufMD/MAUDEMetrics/issues) on GitHub.
-
