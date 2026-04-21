@@ -18,3 +18,4 @@ nsis:
   allowToChangeInstallationDirectory: true
 publish:
   provider: github
+  releaseType: release
