@@ -12,6 +12,7 @@ def main():
         "--noconfirm",
         "--onefile",
         "--noconsole",
+        "--exclude-module", "pkg_resources",
         "--name", "maudemetrics",
         "--add-data", f"templates{os.pathsep}templates",
         "--add-data", f"static{os.pathsep}static",
