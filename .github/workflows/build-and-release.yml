@@ -42,11 +42,17 @@ jobs:
       - name: Install Node Dependencies
         run: npm install
 
-      - name: Build and Publish Electron App (macOS Intel + Apple Silicon)
+      - name: Build and Publish Electron App (macOS Intel)
         if: runner.os == 'macOS'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --publish always --x64 --arm64
+        run: npm run dist -- --publish always --x64
+
+      - name: Build and Publish Electron App (macOS Apple Silicon)
+        if: runner.os == 'macOS'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist -- --publish always --arm64
 
       - name: Build and Publish Electron App (Windows)
         if: runner.os == 'Windows'
