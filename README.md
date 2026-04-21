@@ -21,10 +21,14 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
   <tr>
     <td align="center" width="50%">
       <h3>🍎 macOS</h3>
-      <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics.dmg">
-        <img src="https://img.shields.io/badge/Download-macOS%20App-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS"/>
+      <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-arm64.dmg">
+        <img src="https://img.shields.io/badge/Download-Apple%20Silicon%20(M1--M4)-black?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Apple Silicon"/>
       </a>
-      <br/><sub>macOS 10.12+ · Apple Silicon &amp; Intel</sub>
+      <br/>
+      <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-x64.dmg">
+        <img src="https://img.shields.io/badge/Download-Intel%20Mac-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Intel Mac"/>
+      </a>
+      <br/><sub>macOS · Native Apple Silicon and Intel builds</sub>
     </td>
     <td align="center" width="50%">
       <h3>🪟 Windows</h3>
@@ -41,7 +45,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 ### Installation Steps
 
 **macOS:**
-1. Click the **Download macOS App** button above.
+1. Click the **Apple Silicon** download if your Mac has an M-series chip (M1/M2/M3/M4), or click **Intel Mac** if your Mac has an Intel processor.
 2. Open the downloaded `.dmg` file.
 3. Drag **MAUDEMetrics** into your Applications folder.
 4. Double-click to launch. *(On first launch: right-click → Open if macOS warns about an unverified developer.)*
