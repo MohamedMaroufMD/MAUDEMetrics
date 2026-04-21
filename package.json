@@ -1,6 +1,6 @@
 {
   "name": "maudemetrics",
-  "version": "3.1.2",
+  "version": "3.1.0",
   "description": "MAUDEMetrics - FDA Medical Device Adverse Event Explorer",
   "main": "main.js",
   "scripts": {
