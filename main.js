@@ -41,7 +41,7 @@ async function startPythonProcess() {
   pythonProcess.on('close', (code) => console.log(`Backend process exited with code ${code}`));
 }
 
-async function waitForBackend(url, maxRetries = 120) {
+async function waitForBackend(url, maxRetries = 300) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       const resp = await fetch(url);
@@ -179,6 +179,7 @@ app.whenReady().then(async () => {
   await startPythonProcess();
   
   const backendUrl = `http://127.0.0.1:${backendPort}`;
+  // One-file backend startup can be slower on first launch (especially Intel Macs).
   const isUp = await waitForBackend(backendUrl);
 
   if (isUp) {
