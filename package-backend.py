@@ -11,13 +11,17 @@ def main():
         sys.executable, "-m", "PyInstaller",
         "--noconfirm",
         "--onefile",
-        "--noconsole",
         "--exclude-module", "pkg_resources",
         "--name", "maudemetrics",
         "--add-data", f"templates{os.pathsep}templates",
         "--add-data", f"static{os.pathsep}static",
         "app.py"
     ]
+
+    # Keep backend console-less on Windows, but use console bootloader on macOS/Linux
+    # so the executable behaves as a normal CLI server process.
+    if system == "windows":
+        cmd.insert(5, "--noconsole")
     subprocess.check_call(cmd)
 
     if os.path.exists("backend"):
