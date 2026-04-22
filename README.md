@@ -13,39 +13,39 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 
 ---
 
-## ⬇️ Download the Desktop App
+## Download the Desktop App
 
 > **No installation required.** Download, open, and start analyzing FDA data in seconds.
 
 <table>
   <tr>
     <td align="center" width="50%">
-      <h3>🍎 macOS</h3>
+      <h3>macOS</h3>
       <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-arm64.dmg">
-        <img src="https://img.shields.io/badge/Download-Apple%20Silicon%20(M1--M4)-black?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Apple Silicon"/>
+        <img width="320" src="https://img.shields.io/badge/Download-Apple%20Silicon-black?style=for-the-badge&logo=apple&logoColor=white&logoWidth=16" alt="Download for Apple Silicon"/>
       </a>
       <br/>
       <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-x64.dmg">
-        <img src="https://img.shields.io/badge/Download-Intel%20Mac-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Intel Mac"/>
+        <img width="320" src="https://img.shields.io/badge/Download-Intel%20Mac-black?style=for-the-badge&logo=apple&logoColor=white&logoWidth=16" alt="Download for Intel Mac"/>
       </a>
       <br/><sub>macOS · Native Apple Silicon and Intel builds</sub>
     </td>
     <td align="center" width="50%">
-      <h3>🪟 Windows</h3>
+      <h3>Windows</h3>
       <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-Setup.exe">
-        <img src="https://img.shields.io/badge/Download-Windows%20App-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"/>
+        <img width="320" src="https://img.shields.io/badge/Download-Windows%20App-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"/>
       </a>
       <br/><sub>Windows 10/11 · 64-bit</sub>
     </td>
   </tr>
 </table>
 
-> 💡 **Tip:** The app **automatically checks for updates** from GitHub Releases. When a new version is available, you'll be prompted to update in one click — no need to re-download manually.
+> **Tip:** The app **automatically checks for updates** from GitHub Releases. When a new version is available, you'll be prompted to update in one click — no need to re-download manually.
 
 ### Installation Steps
 
 **macOS:**
-1. Click the **Apple Silicon** download if your Mac has an M-series chip (M1/M2/M3/M4), or click **Intel Mac** if your Mac has an Intel processor.
+1. Click the **Apple Silicon** download if your Mac has an M-series chip, or click **Intel Mac** if your Mac has an Intel processor.
 2. Open the downloaded `.dmg` file.
 3. Drag **MAUDEMetrics** into your Applications folder.
 4. Double-click to launch. *(On first launch: right-click → Open if macOS warns about an unverified developer.)*
@@ -66,7 +66,7 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 
 ## Table of Contents
 
-- [Download the Desktop App](#️-download-the-desktop-app)
+- [Download the Desktop App](#download-the-desktop-app)
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [FDA API Key](#-fda-api-key-recommended)
