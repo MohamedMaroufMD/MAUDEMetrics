@@ -251,19 +251,6 @@ Then visit [http://localhost:5005](http://localhost:5005) in your browser.
 - **Data Validation:** Ensures data integrity and compatibility
 - **Performance Optimized:** Bypasses memory exhaustion (OOM crashes) on massive datasets (50k+ records) by utilizing instantaneous zero-DOM XML streaming and chunked database cursors.
 
-### Export Examples
-Real-world examples with 19,000+ reports are available in the [`examples/`](examples/) folder:
-
-- **`MAUDEMetrics_2025-09-07_1657.xlsx`** - Optimized Excel export (14.1 MB)
-- **`MAUDEMetrics_RawData_20250907_165704.zip`** - Raw data export (20.3 MB)
-
-**File Size Comparison (19k+ Records):**
-- **Optimized Export**: ~14 MB (Excel format with Events sheet only)
-- **Raw Export**: 20.3 MB (ZIP with 5 CSV files, compressed)
-- **Summary Export**: < 1 MB (Excel format with analytical summaries)
-
-*The optimized export provides a clean, single-sheet view of events, while the raw export provides complete data structure preservation and faster processing for very large datasets. The standalone summary provides instant aggregate statistics.*
-
 ---
 
 ## API Details
