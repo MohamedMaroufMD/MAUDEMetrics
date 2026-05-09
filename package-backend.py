@@ -47,7 +47,7 @@ def main():
 
     dest = os.path.join("backend", exe_name)
     shutil.copy2(source_file, dest)
-    print(f"[OK] Packaged {exe_name} → backend/")
+    print(f"[OK] Packaged {exe_name} -> backend/")
 
 
 if __name__ == "__main__":
