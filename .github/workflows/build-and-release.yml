@@ -7,17 +7,28 @@ on:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build on ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-15-intel]
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: macos-15-intel    # x86_64 runner → Intel (x64) build
+            arch: x64
+          - os: macos-latest      # arm64 runner  → Apple Silicon build
+            arch: arm64
     permissions:
       contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Disable Windows Defender Real-Time Protection (CI only)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: Set-MpPreference -DisableRealtimeMonitoring $true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,6 +44,10 @@ jobs:
       - name: Build Python Backend
         run: python package-backend.py
 
+      - name: Verify backend binary exists
+        shell: bash
+        run: ls -la backend/
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -42,17 +57,11 @@ jobs:
       - name: Install Node Dependencies
         run: npm install
 
-      - name: Build and Publish Electron App (macOS Intel)
+      - name: Build and Publish Electron App (macOS)
         if: runner.os == 'macOS'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --publish always --x64
-
-      - name: Build and Publish Electron App (macOS Apple Silicon)
-        if: runner.os == 'macOS'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --publish always --arm64
+        run: npm run dist -- --publish always --${{ matrix.arch }}
 
       - name: Build and Publish Electron App (Windows)
         if: runner.os == 'Windows'
