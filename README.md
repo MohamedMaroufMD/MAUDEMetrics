@@ -44,17 +44,73 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 
 ### Installation Steps
 
-**macOS:**
-1. Click the **Apple Silicon** download if your Mac has an M-series chip, or click **Intel Mac** if your Mac has an Intel processor.
-2. Open the downloaded `.dmg` file.
-3. Drag **MAUDEMetrics** into your Applications folder.
-4. Double-click to launch. *(On first launch: right-click → Open if macOS warns about an unverified developer.)*
+> ⚠️ **Why do I get a security warning?** MAUDEMetrics is free and open-source. Because it is not distributed through the Mac App Store or a paid developer certificate, macOS and Windows will show a one-time security prompt. This is completely normal for independent open-source software. The steps below walk you through it.
 
-**Windows:**
-1. Click the **Download Windows App** button above.
-2. Run the downloaded `.exe` installer.
-3. Follow the on-screen prompts and click **Finish**.
-4. Launch MAUDEMetrics from your Start Menu or Desktop shortcut.
+---
+
+#### 🍎 macOS — Step by Step
+
+**Step 1 — Figure out your Mac chip**
+- Click the 🍎 Apple menu (top-left) → **About This Mac**
+- If it says **Apple M1 / M2 / M3 / M4** → download **Apple Silicon**
+- If it says **Intel** → download **Intel Mac**
+
+**Step 2 — Open the installer**
+- Open the downloaded `.dmg` file from your Downloads folder
+- Drag the **MAUDEMetrics** icon into the **Applications** folder shortcut
+
+**Step 3 — Handle the macOS security warning**
+
+When you first open the app you may see one of these messages:
+
+**Message A: *"MAUDEMetrics" cannot be opened because it is from an unidentified developer.***
+> Right-click (or Control-click) the app icon → click **Open** → click **Open** again in the dialog that appears. You only need to do this once.
+
+**Message B: *"MAUDEMetrics" is damaged and can't be opened. You should move it to the Trash.***
+> This is a stricter macOS warning for apps downloaded from the internet. To fix it:
+> 1. Open **Terminal** (search for it in Spotlight with ⌘Space)
+> 2. Paste this command and press **Enter**:
+> ```
+> xattr -rd com.apple.quarantine /Applications/MAUDEMetrics.app
+> ```
+> 3. Close Terminal and double-click the app — it will open normally.
+
+---
+
+#### 🪟 Windows — Step by Step
+
+**Step 1 — Download and run the installer**
+- Click **Download Windows App** above
+- Open the downloaded `MAUDEMetrics-Setup.exe` from your Downloads folder
+
+**Step 2 — Handle the Windows SmartScreen warning**
+
+You may see a blue screen saying *"Windows protected your PC"*:
+> Click **More info** → then click **Run anyway**. This is a one-time prompt.
+
+**Step 3 — Handle antivirus warnings (McAfee, Norton, Windows Defender, etc.)**
+
+Some antivirus programs may flag or quarantine the app's backend engine. This is a **false positive** — a known issue with independently packaged open-source software. To fix it:
+
+- **Windows Defender:**
+  1. Open **Windows Security** (search for it in the Start Menu)
+  2. Go to **Virus & threat protection** → **Protection history**
+  3. Find the MAUDEMetrics entry → click **Actions** → **Allow on device**
+
+- **McAfee:**
+  1. Open **McAfee Security**
+  2. Go to **My Protection** → **Quarantined files**
+  3. Find `maudemetrics.exe` → click **Restore**
+  4. When prompted, click **Restore and exclude** so it is not flagged again
+
+- **Norton:**
+  1. Open **Norton** → go to **Security** → **History**
+  2. Find the quarantined item → click **Restore** → **Restore and exclude**
+
+- **Other antivirus:** Look for a **Quarantine** or **Threats** section and restore `maudemetrics.exe`, then add it as an exception.
+
+**Step 4 — Launch the app**
+- Find **MAUDEMetrics** in your **Start Menu** or **Desktop** and double-click to open it.
 
 ---
 
@@ -300,8 +356,11 @@ python -m pytest tests/  # If pytest is available
 **Q: How do I install the desktop app?**  
 A: Download the installer for your platform from the [Releases page](https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest). On macOS, open the `.dmg` and drag the app to Applications. On Windows, run the `.exe` installer and follow the prompts.
 
-**Q: macOS says "unverified developer" — is it safe?**  
-A: Yes, this is a standard macOS security prompt for apps not yet signed with a paid Apple Developer certificate. Right-click the app and select **Open** to bypass the warning.
+**Q: macOS says "unverified developer" or "damaged app" — is it safe?**  
+A: Yes. MAUDEMetrics is free and open-source. macOS shows this warning for any app not distributed through the App Store or signed with a paid Apple certificate. See the **Installation Steps** section above for the exact fix for your warning type.
+
+**Q: My antivirus (McAfee, Norton, Windows Defender) is blocking or deleting the app on Windows — is it safe?**  
+A: Yes, this is a known false positive. Antivirus programs sometimes flag independently packaged open-source apps. The app is fully open-source and you can inspect every line of code in this repository. To fix it, restore `maudemetrics.exe` from your antivirus quarantine and add it as an exception. See the **Windows Installation Steps** above for platform-specific instructions.
 
 **Q: How does auto-update work?**  
 A: The desktop app checks GitHub Releases each time it launches. If a newer version is found, it downloads in the background and prompts you to restart and install — no manual re-downloading needed.
