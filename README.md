@@ -48,10 +48,10 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
 
 ---
 
-#### 🍎 macOS — Step by Step
+####  macOS — Step by Step
 
 **Step 1 — Figure out your Mac chip**
-- Click the 🍎 Apple menu (top-left) → **About This Mac**
+- Click the  Apple menu (top-left) → **About This Mac**
 - If it says **Apple M1 / M2 / M3 / M4** → download **Apple Silicon**
 - If it says **Intel** → download **Intel Mac**
 
@@ -77,7 +77,7 @@ When you first open the app you may see one of these messages:
 
 ---
 
-#### 🪟 Windows — Step by Step
+#### Windows — Step by Step
 
 **Step 1 — Download and run the installer**
 - Click **Download Windows App** above
