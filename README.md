@@ -4,7 +4,6 @@
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16691960.svg)](https://doi.org/10.5281/zenodo.16691960)
-[![status](https://joss.theoj.org/papers/ff734337f3acba932276d552f9119136/status.svg)](https://joss.theoj.org/papers/ff734337f3acba932276d52f9119136)
 
 **MAUDEMetrics** is a user-friendly tool for analyzing and reporting on medical device adverse events using data from the FDA's Manufacturer and User Facility Device Experience (MAUDE) Database via the openFDA API.  
 It enables clinicians, researchers, and quality teams to quickly fetch, explore, and export device event data for further analysis.
