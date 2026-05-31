@@ -129,6 +129,7 @@ Some antivirus programs may flag or quarantine the app's backend engine. This is
 - [Advanced Usage (Docker / CLI)](#advanced-usage-docker--cli)
 - [Export & Reports](#export--reports)
 - [API Details](#api-details)
+- [Data Access & Legal Compliance](#data-access--legal-compliance)
 - [FAQ / Troubleshooting](#faq--troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -322,6 +323,20 @@ See the [fields reference](https://open.fda.gov/fields/deviceevent_reference.xls
 
 ---
 
+## Data Access & Legal Compliance
+
+MAUDEMetrics retrieves data exclusively through the **official openFDA API** (`https://api.fda.gov/device/event.json`), the FDA's own platform created specifically for programmatic public access to its datasets.
+
+| Topic | Details |
+|---|---|
+| **Data license** | All MAUDE data served by openFDA is released under [Creative Commons CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) — equivalent to public domain. Unrestricted use, redistribution, and commercial application are permitted without attribution. |
+| **Access method** | Only documented, publicly accessible API endpoints are used. No authentication-protected endpoints are accessed. No web scraping is performed. |
+| **Rate-limit compliance** | The tool respects openFDA's published rate limits. An optional FDA-issued API key is supported for higher-volume use (see [FDA API Key](#-fda-api-key-recommended)). |
+| **Pagination** | The cursor-based `search_after` pagination used by MAUDEMetrics is an [officially documented openFDA API feature](https://open.fda.gov/apis/query-parameters/), not a circumvention of access controls. |
+| **openFDA Terms of Service** | https://open.fda.gov/terms/ |
+
+---
+
 ## Testing and Validation
 
 ### Automated Testing
@@ -462,6 +477,7 @@ For feature requests, please describe:
 ## License
 
 - This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+- For data licensing, API terms, and compliance information, see [LEGAL.md](LEGAL.md).
 
 ---
 
