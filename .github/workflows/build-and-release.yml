@@ -75,6 +75,8 @@ jobs:
           path: |
             dist-electron/*.dmg
             dist-electron/*.dmg.blockmap
+            dist-electron/*.zip
+            dist-electron/*.zip.blockmap
             dist-electron/*.exe
             dist-electron/*.exe.blockmap
             dist-electron/latest*.yml
@@ -100,10 +102,16 @@ jobs:
 
           def parse_manifest(path):
               content = open(path).read()
+              # electron-updater uses zip for mac updates
+              url_match = re.search(r'url: (\S+\.zip)', content)
+              if not url_match:
+                  url_match = re.search(r'url: (\S+\.dmg)', content)
+              sha_matches = re.findall(r'sha512: (\S+)', content)
+              size_match = re.search(r'size: (\d+)', content)
               return {
-                  'url':     re.search(r'url: (\S+\.dmg)', content).group(1),
-                  'sha512':  re.search(r'sha512: (\S+)', content).group(1),
-                  'size':    re.search(r'size: (\d+)', content).group(1),
+                  'url':     url_match.group(1),
+                  'sha512':  sha_matches[0],
+                  'size':    size_match.group(1),
                   'version': re.search(r'^version: (.+)$', content, re.M).group(1).strip(),
                   'date':    re.search(r'^releaseDate: (.+)$', content, re.M).group(1).strip(),
               }
@@ -153,11 +161,15 @@ jobs:
 
           for f in \
             artifacts/dist-macos-arm64/*.dmg \
-            artifacts/dist-macos-arm64/*.blockmap \
+            artifacts/dist-macos-arm64/*.dmg.blockmap \
+            artifacts/dist-macos-arm64/*.zip \
+            artifacts/dist-macos-arm64/*.zip.blockmap \
             artifacts/dist-macos-x64/*.dmg \
-            artifacts/dist-macos-x64/*.blockmap \
+            artifacts/dist-macos-x64/*.dmg.blockmap \
+            artifacts/dist-macos-x64/*.zip \
+            artifacts/dist-macos-x64/*.zip.blockmap \
             artifacts/dist-windows/*.exe \
-            artifacts/dist-windows/*.blockmap; do
+            artifacts/dist-windows/*.exe.blockmap; do
             [ -f "$f" ] && gh release upload "$TAG" "$f" \
               --repo ${{ github.repository }} \
               --clobber

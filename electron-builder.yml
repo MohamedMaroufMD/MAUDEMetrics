@@ -9,7 +9,9 @@ files:
 extraResources:
   - "backend/**/*"
 mac:
-  target: dmg
+  target:
+    - target: dmg
+    - target: zip
   category: public.app-category.medical
   artifactName: "${productName}-${arch}.${ext}"
 win:
