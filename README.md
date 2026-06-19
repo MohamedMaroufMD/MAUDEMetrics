@@ -1,9 +1,11 @@
 # MAUDEMetrics
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
+[![Tests](https://github.com/MohamedMaroufMD/MAUDEMetrics/actions/workflows/tests.yml/badge.svg)](https://github.com/MohamedMaroufMD/MAUDEMetrics/actions/workflows/tests.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16691960.svg)](https://doi.org/10.5281/zenodo.16691960)
+[![Preprint](https://img.shields.io/badge/Preprint-10.21203%2Frs.3.rs--9990811%2Fv1-B31B1B.svg)](https://doi.org/10.21203/rs.3.rs-9990811/v1)
 
 **MAUDEMetrics** is a user-friendly tool for analyzing and reporting on medical device adverse events using data from the FDA's Manufacturer and User Facility Device Experience (MAUDE) Database via the openFDA API.  
 It enables clinicians, researchers, and quality teams to quickly fetch, explore, and export device event data for further analysis.
@@ -21,20 +23,22 @@ It enables clinicians, researchers, and quality teams to quickly fetch, explore,
     <td align="center" width="50%">
       <h3>macOS</h3>
       <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-arm64.dmg">
-        <img width="320" src="https://img.shields.io/badge/Download-Apple%20Silicon-black?style=for-the-badge&logo=apple&logoColor=white&logoWidth=16" alt="Download for Apple Silicon"/>
+        <img width="240" src="https://img.shields.io/badge/Download-Apple%20Silicon-black?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Apple Silicon"/>
       </a>
-      <br/>
+      <br/><br/>
       <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-x64.dmg">
-        <img width="320" src="https://img.shields.io/badge/Download-Intel%20Mac-black?style=for-the-badge&logo=apple&logoColor=white&logoWidth=16" alt="Download for Intel Mac"/>
+        <img width="240" src="https://img.shields.io/badge/Download-Intel%20Mac-black?style=for-the-badge&logo=apple&logoColor=white" alt="Download for Intel Mac"/>
       </a>
-      <br/><sub>macOS · Native Apple Silicon and Intel builds</sub>
+      <br/><br/>
+      <sub>macOS · Native Apple Silicon and Intel builds</sub>
     </td>
     <td align="center" width="50%">
       <h3>Windows</h3>
       <a href="https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-Setup.exe">
-        <img width="320" src="https://img.shields.io/badge/Download-Windows%20App-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"/>
+        <img width="240" src="https://img.shields.io/badge/Download-Windows%20App-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows"/>
       </a>
-      <br/><sub>Windows 10/11 · 64-bit</sub>
+      <br/><br/>
+      <sub>Windows 10/11 · 64-bit</sub>
     </td>
   </tr>
 </table>
@@ -407,7 +411,7 @@ A: All dates are consistently formatted as mm/dd/yyyy across all sheets.
 A: It's the premium "golden sheet" (exported via Optimized Data) with professional formatting, smart column organization, integrated MDR texts, and optimized performance for the best user experience.
 
 **Q: How do I cite this software?**  
-A: Please use the citation information in the CITATION.cff file or cite the JOSS paper when published.
+A: Please cite the companion preprint: Marouf et al. (2026). *MAUDEMetrics: An Open-Source Framework for Automated FDA MAUDE Data Extraction and Reproducible Device Safety Research.* Research Square. https://doi.org/10.21203/rs.3.rs-9990811/v1. For the software archive, see the Zenodo DOI badge above. Full citation metadata is available in `CITATION.cff`.
 
 ---
 
