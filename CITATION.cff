@@ -1,28 +1,55 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: "If you use this software, please cite both the software and the companion paper."
+type: software
 authors:
   - family-names: Marouf
     given-names: Mohamed
     orcid: "0000-0001-7480-371X"
-title: "MAUDEMetrics: A Web-Based Tool for Automated Extraction and Analysis of FDA MAUDE Device Reports"
-version: "2.1.1"
+title: "MAUDEMetrics: Open-Source Automated Extraction and Standardization of FDA MAUDE Adverse Event Data"
+version: "3.1.1"
 doi: "10.5281/zenodo.16691960"
-date-released: 2026-01-03
+date-released: 2026-06-10
 url: "https://github.com/MohamedMaroufMD/MAUDEMetrics"
 repository-code: "https://github.com/MohamedMaroufMD/MAUDEMetrics"
-abstract: "MAUDEMetrics is a Python-based, Docker-compatible web application that democratizes access to MAUDE data by automating extraction, aggregation, and descriptive analysis of adverse event reports via the openFDA Device Event API. The tool provides an intuitive web interface that eliminates the need for programming expertise while supporting sophisticated multi-term queries across brand names, product codes, generic names, and manufacturer names. It automatically handles API pagination limitations and aggregates comprehensive datasets, yielding complete structured results with professional data exports including optimized Excel reports and fast raw data exports in original API structure (ZIP with 5 CSV files). The tool now supports both formatted analysis-ready exports and high-performance raw data exports optimized for large datasets (50k+ records)."
+abstract: "MAUDEMetrics is an open-source, no-code desktop application and Docker-deployable web service that automates full-dataset extraction, standardization, and export of adverse event reports from the FDA MAUDE database. It implements cursor-based search_after pagination to bypass the openFDA API 26,000-record ceiling, applies a four-step deterministic standardization pipeline to over 100 fields, and produces three professional export formats (Optimized Excel, Summary Statistics, Raw ZIP). Ships as signed native installers for macOS Apple Silicon and Intel and Windows, with Docker support for server deployment. Validated at 100% recall across 10 code-year combinations against FDA authoritative quarterly raw device files."
 keywords:
   - medical devices
   - FDA
   - MAUDE database
   - adverse events
-  - safety analysis
+  - postmarket surveillance
   - openFDA API
   - Python
-  - Flask
-  - data visualization
-  - healthcare analytics
-  - regulatory science
-  - postmarket surveillance
+  - reproducible research
   - health informatics
-license: Apache-2.0 
+  - regulatory science
+  - data standardization
+  - no-code
+  - FAIR data
+license: Apache-2.0
+preferred-citation:
+  type: article
+  title: "MAUDEMetrics: An Open-Source Framework for Automated FDA MAUDE Data Extraction and Reproducible Device Safety Research"
+  authors:
+    - family-names: Marouf
+      given-names: Mohamed
+      orcid: "0000-0001-7480-371X"
+    - family-names: Hawas
+      given-names: Yousef
+      orcid: "0000-0003-0361-4609"
+    - family-names: Alkhawaldeh
+      given-names: Ibraheem M.
+      orcid: "0000-0002-0187-1583"
+    - family-names: Ghazou
+      given-names: Alina
+      orcid: "0009-0001-3944-4851"
+    - family-names: Awad
+      given-names: Aya
+      orcid: "0009-0002-7422-7067"
+    - family-names: Negida
+      given-names: Ahmed
+      orcid: "0000-0001-5363-6369"
+  year: 2026
+  doi: "10.21203/rs.3.rs-9990811/v1"
+  url: "https://doi.org/10.21203/rs.3.rs-9990811/v1"
+  notes: "Preprint available on Research Square; peer review in progress."

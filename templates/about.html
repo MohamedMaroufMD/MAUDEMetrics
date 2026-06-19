@@ -49,8 +49,9 @@
                 Safety Research</div>
             <div class="maude-description mx-auto mt-3"
                 style="max-width: 700px; color:#444; font-size:1rem; line-height: 1.6;">MAUDEMetrics is an <span
-                    class="fw-semibold">open-source</span> tool for exploring adverse event reports submitted to the
-                FDA's MAUDE database, enabling efficient safety signal detection and reporting.</div>
+                    class="fw-semibold">open-source</span>, no-code desktop application and web service for automated
+                extraction, standardization, and export of adverse event reports from the FDA's MAUDE database —
+                enabling reproducible, large-scale device safety research without programming expertise.</div>
         </div>
 
         <!-- Project Overview -->
@@ -225,37 +226,37 @@
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <h6 class="fw-bold mb-3" style="color: #374151;">Backend Technology</h6>
+                                <h6 class="fw-bold mb-3" style="color: #374151;">Backend & Data</h6>
                                 <ul class="list-unstyled">
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Python Flask Framework</span></li>
+                                            style="color: #6b7280;">Python 3.11+ / Flask 2.3.3</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">FDA API Key Integration</span></li>
+                                            style="color: #6b7280;"><code>search_after</code> cursor pagination — no record ceiling</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Advanced Pagination (search_after) for robust extraction</span></li>
+                                            style="color: #6b7280;">SQLite local cache — repeat queries in &lt;1 s</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">SQLite Database</span></li>
+                                            style="color: #6b7280;">Pandas + NumPy standardization pipeline</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Pandas Data Processing</span></li>
+                                            style="color: #6b7280;">OpenPyXL memory-safe streaming export</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Data Export (openpyxl)</span></li>
+                                            style="color: #6b7280;">Exponential-backoff retry &amp; rate-limit handling</span></li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="fw-bold mb-3" style="color: #374151;">Frontend Technology</h6>
+                                <h6 class="fw-bold mb-3" style="color: #374151;">Desktop App & Deployment</h6>
                                 <ul class="list-unstyled">
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Bootstrap 5 Framework</span></li>
+                                            style="color: #6b7280;">Electron 28 — signed macOS &amp; Windows installers</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Responsive Design</span></li>
+                                            style="color: #6b7280;">PyInstaller — standalone Python bundle</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Interactive Charts</span></li>
+                                            style="color: #6b7280;">Docker + Docker Compose — containerized deployment</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Modern multi-select filters</span></li>
+                                            style="color: #6b7280;">Auto-update via GitHub Releases</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Real-time console messaging</span></li>
+                                            style="color: #6b7280;">Bootstrap 5 — responsive UI &amp; interactive charts</span></li>
                                     <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i><span
-                                            style="color: #6b7280;">Modern UI/UX</span></li>
+                                            style="color: #6b7280;">Real-time extraction console (Server-Sent Events)</span></li>
                                 </ul>
                             </div>
                         </div>
@@ -364,21 +365,41 @@
                         </div>
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h6 class="fw-bold mb-3" style="color: #374151;">Citation</h6>
-                                <p class="mb-3" style="color: #6b7280;">
-                                    <a href="https://doi.org/10.5281/zenodo.16691960" target="_blank"
-                                        class="text-decoration-none" style="color: #3b82f6;">
-                                        <i class="bi bi-link-45deg me-1"></i>DOI: 10.5281/zenodo.16691960
+                                <h6 class="fw-bold mb-3" style="color: #374151;">How to Cite</h6>
+
+                                <!-- Preprint citation -->
+                                <div class="alert border-0 mb-3"
+                                    style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-left: 4px solid #3b82f6 !important; border: 1px solid #bfdbfe;">
+                                    <div class="d-flex align-items-start gap-2 mb-2">
+                                        <i class="bi bi-file-earmark-text" style="color: #3b82f6; margin-top: 2px;"></i>
+                                        <strong style="color: #1e40af;">Research Paper (Preprint)</strong>
+                                    </div>
+                                    <p class="mb-2 small" style="color: #374151; line-height: 1.6;">
+                                        Marouf M, Hawas Y, Alkhawaldeh IM, Ghazou A, Awad A, Negida A. (2026).
+                                        MAUDEMetrics: An Open-Source Framework for Automated FDA MAUDE Data Extraction
+                                        and Reproducible Device Safety Research. <em>Research Square</em>.
+                                    </p>
+                                    <a href="https://doi.org/10.21203/rs.3.rs-9990811/v1" target="_blank"
+                                        class="text-decoration-none small fw-semibold" style="color: #3b82f6;">
+                                        <i class="bi bi-link-45deg me-1"></i>https://doi.org/10.21203/rs.3.rs-9990811/v1
                                     </a>
-                                </p>
-                                <div class="alert alert-light border-0 mt-3"
-                                    style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1px solid #e3eaf3;">
-                                    <h6 class="fw-bold mb-2" style="color: #374151;">How to Cite MAUDEMetrics:</h6>
-                                    <p class="mb-0 small" style="color: #6b7280;">Marouf, M. (2025). MAUDEMetrics: A
-                                        Web-Based Tool for Automated Extraction and Analysis of FDA MAUDE Device Reports
-                                        (v2.1.1). Zenodo. <a href="https://doi.org/10.5281/zenodo.16691960"
-                                            target="_blank"
-                                            style="color: #3b82f6;">https://doi.org/10.5281/zenodo.16691960</a></p>
+                                </div>
+
+                                <!-- Software citation -->
+                                <div class="alert border-0 mb-0"
+                                    style="background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%); border-left: 4px solid #10b981 !important; border: 1px solid #a7f3d0;">
+                                    <div class="d-flex align-items-start gap-2 mb-2">
+                                        <i class="bi bi-code-square" style="color: #059669; margin-top: 2px;"></i>
+                                        <strong style="color: #065f46;">Software (v3.1.1)</strong>
+                                    </div>
+                                    <p class="mb-2 small" style="color: #374151; line-height: 1.6;">
+                                        Marouf M. (2026). MAUDEMetrics: Open-Source Automated Extraction and
+                                        Standardization of FDA MAUDE Adverse Event Data (v3.1.1). <em>Zenodo</em>.
+                                    </p>
+                                    <a href="https://doi.org/10.5281/zenodo.16691960" target="_blank"
+                                        class="text-decoration-none small fw-semibold" style="color: #059669;">
+                                        <i class="bi bi-link-45deg me-1"></i>https://doi.org/10.5281/zenodo.16691960
+                                    </a>
                                 </div>
                             </div>
                         </div>

@@ -1,21 +1,19 @@
 ---
-title: 'MAUDEMetrics: Automated extraction and comprehensive analysis of FDA MAUDE device safety data'
+title: 'MAUDEMetrics: Open-Source Automated Extraction and Standardization of FDA MAUDE Adverse Event Data'
 tags:
   - medical devices
   - FDA
   - MAUDE database
   - adverse events
-  - safety analysis
+  - postmarket surveillance
   - openFDA API
   - Python
-  - Flask
-  - data extraction
-  - healthcare analytics
-  - regulatory science
-  - postmarket surveillance
-  - health informatics
   - reproducible research
-  - clinical safety
+  - health informatics
+  - regulatory science
+  - data standardization
+  - no-code
+  - FAIR data
 authors:
   - name: Mohamed Marouf
     orcid: 0000-0001-7480-371X
@@ -23,92 +21,87 @@ authors:
 affiliations:
   - index: 1
     name: Faculty of Medicine, Mansoura University, Mansoura, Egypt
-date: 2025-09-08
+    ror: 01k8vtd75
+date: 10 June 2026
 bibliography: paper.bib
-# JOSS submission ready
 ---
 
 # Summary
 
-Monitoring medical device safety is critical for patient safety and regulatory compliance.  
-The FDA's Manufacturer and User Facility Device Experience (MAUDE) database contains over 22 million adverse event reports and remains a primary source for postmarket surveillance [@fda_maude].  
-The FDA receives several hundred thousand new medical device reports annually, which are accessible via the openFDA Device Event API [@openfda_api].  
+The FDA Manufacturer and User Facility Device Experience (MAUDE) database [@fda_maude] holds over 23 million adverse event reports and is the primary U.S. resource for post-market medical device surveillance. Despite its importance, a 2024 systematic audit found that only 23.3% of published MAUDE-based queries could be independently reproduced — a reproducibility crisis rooted in undocumented extraction methods, inconsistent field handling, and reliance on access routes that impose hard record limits [@li2024].
 
-However, practical use of this database is constrained by the openFDA API’s hard 26,000-record offset pagination limit, the FDA website’s 500-record export restriction (with missing demographic fields), and the need for significant technical expertise to aggregate and analyze reports.  
-These barriers make comprehensive device safety analysis difficult, time-consuming, and error-prone.  
+**MAUDEMetrics** is an open-source, no-code desktop application and Docker-deployable web service that directly targets this failure mode. A researcher specifies one or more search parameters — brand name, product code, manufacturer, device class, or date range — through a graphical interface and receives a fully standardized, analysis-ready dataset in minutes, with no command-line interaction or programming required. Under the hood, the software automates full-dataset extraction from the openFDA Device Event API [@openfda_api], applies a deterministic four-step standardization pipeline across 100+ fields, and produces three complementary export formats. It ships as signed native installers for macOS (Apple Silicon and Intel) and Windows, alongside a Docker image for server and containerized workflows.
 
-**MAUDEMetrics** is a Python-based web application that democratizes access to MAUDE data by automating extraction, aggregation, and analysis of adverse event reports via the openFDA API.  
-It provides an intuitive web interface, requires no programming expertise, and supports complex queries across brand names, product codes, manufacturers, and date ranges.  
-The tool automatically employs dynamic cursor pagination to bypass API limits, validates and standardizes >100 fields, and utilizes a memory-safe streaming engine to produce three distinct output options: raw data preservation, cleaned optimized datasets, and standalone statistical summaries.  
-
-By reducing analysis time from hours to minutes, MAUDEMetrics enhances reproducibility, efficiency, and accessibility of MAUDE data for clinicians, researchers, quality assurance teams, and regulatory professionals.
+Correctness is independently verified against FDA authoritative quarterly raw device files spanning a wide range of dataset sizes and device categories, and performance has been benchmarked across multiple hardware configurations. Full validation protocols and results are reported in a companion preprint [@marouf2026preprint]. Complete installation instructions and usage documentation are provided in the repository README.
 
 # Statement of Need
 
-Medical device safety analysis is essential for patient safety and regulatory compliance, yet current MAUDE access methods impose significant barriers:
+The reproducibility crisis in MAUDE-based research is well-documented. Li et al. screened 523 PubMed-indexed MAUDE publications and found that only 60 contained executable queries; of those, only 14 (23.3%) reproduced their originally reported record counts within a ±5% tolerance [@li2024]. The underlying causes are structural: existing access routes impose hard record limits, omit key fields, and provide no mechanism for standardizing outputs across research groups.
 
-- **API Limitations**: The openFDA API restricts standard pagination queries to a hard limit of 26,000 records, requiring complex cursor-based (`search_after`) iteration to extract comprehensive safety profiles [@openfda_api].  
-- **Web Interface Limitations**: The MAUDE portal only allows 500-record exports and omits essential fields such as demographics [@fda_maude].  
-- **Manual Burden**: Researchers must perform multiple searches, downloads, and merges to assemble datasets.  
-- **Reproducibility Challenges**: Manual extraction is difficult to replicate and error-prone.    
+Three pathways currently exist for accessing MAUDE data, and each imposes a distinct barrier:
 
-**MAUDEMetrics** addresses these gaps by providing:  
+1. **FDA Web Portal**: Limited to 500 records per export and omits essential demographic fields, making it unsuitable for any moderate or large-scale study.
+2. **openFDA Device Event API** [@openfda_api]: Programmatic and field-complete, but requires fluency with cursor-based `search_after` pagination to bypass a hard 26,000-record offset ceiling — a technical barrier that excludes researchers without programming expertise and that, when handled incorrectly, silently truncates datasets without warning.
+3. **Raw Quarterly Device Files**: Comprehensive but require substantial local storage, a relational database, and manual field-code mapping with no accompanying documentation.
 
-- An accessible, programming-free web interface  
-- Intelligent `search_after` cursor pagination to bypass API hard limits and assemble complete datasets  
-- Multi-parameter search across brand names, product codes, manufacturers, product classes, and date ranges
-- Automated cleaning and validation of >100 FDA data fields  
-- Three distinct professional export options: Optimized Excel streaming, analytical summaries, and JSON/CSV raw retention 
-- Built-in visualization dashboard for event types and device brands 
-- Docker containerization for reproducible workflows  
+No existing open-source tool integrates all three concerns: circumventing record limits, validating extraction completeness against an authoritative reference, and producing standardized, field-documented outputs. MAUDEMetrics fills this gap for clinical researchers, hospital quality-assurance teams, regulatory professionals, and systematic review authors who need reproducible, complete MAUDE datasets without a software engineering background.
 
-The software benefits clinical researchers, hospital QA teams, regulatory professionals, and healthcare institutions conducting device safety audits.
+# State of the Field
 
-# Implementation
+Several tools and approaches exist for accessing MAUDE data, but none resolves the reproducibility gap identified by Li et al. [@li2024]:
 
-MAUDEMetrics is implemented as a **Flask** web application [@flask] that integrates directly with the openFDA Device Event API.  
-The `fetch_all_API_data()` function dynamically automates `search_after` cursor pagination and exponential backoff logic to bypass the API's 26,000-record limit. **Pandas** [@mckinney2010] and **NumPy** [@numpy] perform complex data processing, while data is cached locally in **SQLite** [@sqlite] for performance and persistence.  
+- **FDA MAUDE Web Portal**: The official free interface supports basic search but is constrained to 500 records per export and omits demographic fields present in the API.
+- **Direct openFDA API use**: Provides full field access and supports programmatic research workflows, but requires Python proficiency for cursor-state pagination; naive offset-based queries silently cap datasets at 26,000 records.
+- **Raw quarterly device files**: Complete and authoritative, but the engineering setup (database infrastructure, substantial storage, custom ETL pipelines) lies beyond the resources of most clinical research groups.
+- **Commercial surveillance platforms**: Closed-source, subscription-based, and designed for industry use — not compatible with open, reproducible academic workflows.
 
-The high-performance export engine utilizes a memory-safeguarded streaming architecture to prevent out-of-memory (OOM) failures on massive multidimensional arrays. It provides three complementary options for researchers:  
+The only identified open-source Python library specifically targeting MAUDE data, PyMAUDE [@pymaudegithub], accesses FDA quarterly raw file downloads rather than the openFDA API, requires approximately 100 MB per year for device data files, provides no graphical interface or export pipeline, and is explicitly documented as not yet externally useable with no published release. MAUDEMetrics addresses a complementary use case: real-time API-based extraction without local file management, a no-code interface accessible to researchers without programming expertise, and a validated standardization layer that produces immediately analysis-ready outputs.
 
-- **Optimized Excel Export**: Generates a cleaned, standardized workbook of event data with integrated multidimensional narratives, leveraging an $O(1)$ dictionary lookup strategy and **OpenPyXL**'s [@openpyxl] memory-efficient `write_only` streaming mode.
-- **Summary Statistics Export**: A lightweight, standalone Excel export of aggregated patient demographics, data qualities, and event frequencies.
-- **Raw Data Export**: Preserves the original JSON hierarchical structure from the openFDA API into CSV files (packaged dynamically as ZIP archives), ensuring no loss of original analytical metadata.
+MAUDEMetrics is, to our knowledge, the first openly released MAUDE tool designed for non-programmers that combines automated full-dataset extraction, explicit gold-standard recall validation, and a deterministic standardization pipeline. Unlike convenience-oriented wrappers, its design rationale is reproducibility: every extraction is governed by documented field mappings and pinned dependencies that enable independent replication.
 
-Deployment uses **Docker** [@docker] for reproducibility, and the web interface is styled with Bootstrap 5.  
-Testing covers API integration, database operations, export generation, and web routes, with a 100% pass rate.  
-Performance benchmarks show ~5,000 records extracted in under 30 seconds.
+# Software Design
 
-![MAUDEMetrics Workflow](MAUDEMetrics%20Workflow.png)
+MAUDEMetrics is built on a Flask 2.3.3 web backend [@flask] running Python 3.11+ [@python3], packaged into native desktop applications using Electron 28 [@electron] and PyInstaller [@pyinstaller], with Docker [@docker] support for containerized deployment. Electron was chosen over a hosted web service to eliminate server infrastructure requirements and enable offline use — important for clinical and regulatory environments with network restrictions. The architecture follows a strict separation of concerns across four modules: extraction, persistence, standardization, and export.
 
-*Figure 1: MAUDEMetrics architecture and workflow. User input via the web interface triggers Flask endpoints that query the openFDA API (utilizing search_after pagination), cache results in SQLite, and process data with Pandas. The system supports three distinct export modes utilizing memory-efficient streams: raw ZIP/CSV files that preserve the original FDA JSON hierarchy, processed Excel workbooks via OpenPyXL's write_only mode, and standalone demographic summaries. Docker ensures reproducible deployment.*
+![MAUDEMetrics architecture and data-flow diagram. User queries enter the web interface, triggering the Flask backend to execute cursor-paginated openFDA API requests. Retrieved records are cached in SQLite, processed through the four-step standardization pipeline, and routed to one of three export engines.](MAUDEMetrics_Workflow.png)
 
-# Use Cases and Impact
+**Extraction engine.** The core function `fetch_all_API_data()` implements openFDA's `search_after` cursor mechanism with exponential-backoff retry logic using the requests HTTP library [@requests]. Each batch request returns up to 1,000 records (or 500 without an API key) along with a cursor token; the engine iterates until the API signals exhaustion, bypassing the 26,000-record ceiling that affects offset-based pagination. Rate-limit responses (HTTP 429) trigger automatic backoff without user intervention. Cursor-based iteration was adopted over offset pagination specifically because offset queries silently truncate large datasets — the primary mechanism underlying the reproducibility failures documented by Li et al. [@li2024].
 
-**Research**:  
-- Aggregate device-specific adverse events for systematic reviews  
-- Compare event rates across manufacturers  
-- Conduct temporal trend analyses  
+**Persistence layer.** Extracted records are stored in a local SQLite database [@sqlite] with a normalized schema (events, devices, patients, mdr\_texts). SQLite was selected for its zero-configuration, single-file portability — researchers can archive, share, or version-control their extracted database without a database server. Repeat queries on already-cached datasets return within one second, eliminating redundant API calls and reducing load on public infrastructure.
 
-**Clinical Quality Assurance**:  
-- Monitor devices used within an institution  
-- Detect emerging safety signals  
-- Generate reproducible safety reports  
+**Standardization pipeline.** Raw openFDA JSON is processed using Pandas [@mckinney2010] and NumPy [@numpy] through four sequential, deterministic steps. The pipeline is intentionally non-configurable: determinism ensures that the same query always produces identical output, directly addressing the inconsistency that makes MAUDE results difficult to reproduce across research groups.
 
-**Regulatory**:  
-- Support FDA submissions with structured evidence  
-- Standardize postmarket surveillance workflows  
+1. *Field humanization*: Maps 100+ API field codes to clinical terminology and flattens nested JSON arrays.
+2. *Demographic aggregation*: Parses patient sub-arrays and computes descriptive statistics (median age, sex distribution, race/ethnicity).
+3. *Date normalization*: Converts YYYYMMDD strings to ISO 8601; malformed or absent dates are assigned explicit null values rather than propagating errors downstream.
+4. *Narrative integration*: Concatenates multi-part MDR text fields and sanitizes Unicode artifacts.
 
-By automating extraction and standardizing outputs, MAUDEMetrics reduces manual effort, minimizes transcription errors, and enables reproducible device safety investigations.
+Field mappings are documented in a controlled-vocabulary file committed to the repository, making the standardization process independently auditable.
 
-# Software Availability
+**Export engine.** Three complementary export modes are available. OpenPyXL's [@openpyxl] `write_only` streaming mode was chosen for the Excel export specifically to prevent out-of-memory failures on large datasets — a known failure mode when using standard worksheet mode with arrays exceeding tens of thousands of rows.
 
-- **Name**: MAUDEMetrics  
-- **Repository**: <https://github.com/MohamedMaroufMD/MAUDEMetrics>  
-- **DOI**: <https://doi.org/10.5281/zenodo.16691960>  
-- **License**: Apache License 2.0  
-- **Version**: 3.0.0 (2026-03-19)  
+- *Optimized Excel*: A cleaned, analysis-ready workbook generated using an O(1) dictionary-lookup strategy with `write_only` streaming.
+- *Summary Statistics*: A lightweight standalone workbook of aggregated patient demographics and event frequency tables.
+- *Raw ZIP Archive*: Five CSV files preserving the original openFDA JSON hierarchy, ensuring no analytical metadata is discarded.
 
-Detailed installation (Docker and manual), usage examples, tests, and sample exports are provided in the repository.
+**Analytics dashboard.** An interactive web dashboard provides exploratory analysis without requiring a data export: event type distributions, patient demographic breakdowns (age, sex, race, ethnicity), manufacturer frequency tables, and device problem category summaries are computed on-the-fly from the local cache using dynamic multi-select filters.
+
+**Testing.** A pytest-based test suite covers core API routes, database schema integrity, data processing functions, and text sanitization logic. Tests run automatically on every push via a GitHub Actions CI workflow, ensuring ongoing correctness as the codebase evolves.
+
+**Deployment.** Pre-built, signed installers are distributed via GitHub Releases for macOS Apple Silicon (.dmg arm64), macOS Intel (.dmg x64), and Windows (.exe via NSIS). A Docker Compose configuration is provided for server deployment and reproducible containerized workflows. An auto-update mechanism checks GitHub Releases on application launch.
+
+# Research Impact Statement
+
+The software has been independently validated for completeness and performance across multiple hardware configurations, dataset scales spanning three orders of magnitude, and five distinct FDA product categories. Validation compared MAUDEMetrics outputs record-for-record against FDA authoritative quarterly raw device files, and timed benchmarks were conducted against both the FDA web portal and manual extraction workflows. An end-to-end extraction of a large real-world adverse-event dataset was completed in minutes on commodity hardware, demonstrating production-scale usability. Full validation protocols, quantitative results, and case-study data are reported in a companion preprint [@marouf2026preprint].
+
+The software is freely available under the Apache License 2.0, archived on Zenodo with a persistent DOI (10.5281/zenodo.16691960), and distributed as signed pre-built installers to lower the adoption barrier for clinical and regulatory researchers. The tool targets a well-defined underserved community — clinical and translational researchers who rely on MAUDE data but lack programming expertise — and addresses a documented, quantified failure mode in the published literature [@li2024]. As the medical device landscape grows in complexity, particularly with AI-enabled and software-as-medical-device products generating new categories of adverse events, accessible and reproducible MAUDE analysis tools are increasingly important for early safety signal detection and evidence generation.
+
+# AI Usage Disclosure
+
+During software development, generative AI tools — including OpenAI ChatGPT, Google Gemini, Anthropic Claude, and DeepSeek — were consulted in an advisory capacity for guidance on specific implementation challenges, including API integration patterns, library usage, and bug resolution. This use is analogous to consulting technical documentation or developer forums; all architectural decisions, software design, core algorithmic logic, and validation methodology were conceived and implemented by the author.
+
+# Acknowledgements
+
+The author thanks Yousef Hawas and Ibraheem M. Alkhawaldeh for conducting independent validation testing across multiple hardware configurations, Alina Ghazou and Aya Awad for user feedback and feature suggestions that shaped the tool's development, and Ahmed Negida for supervision and critical review. The openFDA program (U.S. Food and Drug Administration / National Library of Medicine) is gratefully acknowledged for providing open, documented API access to MAUDE data. No financial support was received for this work.
 
 # References
