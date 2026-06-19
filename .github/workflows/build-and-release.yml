@@ -14,10 +14,13 @@ jobs:
         include:
           - os: windows-latest
             arch: x64
-          - os: macos-15-intel    # x86_64 runner → Intel (x64) build
+            artifact: dist-windows
+          - os: macos-13
             arch: x64
-          - os: macos-latest      # arm64 runner  → Apple Silicon build
+            artifact: dist-macos-x64
+          - os: macos-latest
             arch: arm64
+            artifact: dist-macos-arm64
     permissions:
       contents: write
 
@@ -57,14 +60,114 @@ jobs:
       - name: Install Node Dependencies
         run: npm install
 
-      - name: Build and Publish Electron App (macOS)
+      - name: Build Electron App (macOS)
         if: runner.os == 'macOS'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --publish always --${{ matrix.arch }}
+        run: npm run dist -- --publish never --${{ matrix.arch }}
 
-      - name: Build and Publish Electron App (Windows)
+      - name: Build Electron App (Windows)
         if: runner.os == 'Windows'
+        run: npm run dist -- --publish never
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.dmg.blockmap
+            dist-electron/*.exe
+            dist-electron/*.exe.blockmap
+            dist-electron/latest*.yml
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create combined latest-mac.yml
+        run: |
+          python3 - << 'PYEOF'
+          import re, glob
+
+          def parse_manifest(path):
+              content = open(path).read()
+              return {
+                  'url':     re.search(r'url: (\S+\.dmg)', content).group(1),
+                  'sha512':  re.search(r'sha512: (\S+)', content).group(1),
+                  'size':    re.search(r'size: (\d+)', content).group(1),
+                  'version': re.search(r'^version: (.+)$', content, re.M).group(1).strip(),
+                  'date':    re.search(r'^releaseDate: (.+)$', content, re.M).group(1).strip(),
+              }
+
+          arm64 = glob.glob('artifacts/dist-macos-arm64/latest-mac.yml')
+          x64   = glob.glob('artifacts/dist-macos-x64/latest-mac.yml')
+
+          if arm64 and x64:
+              a = parse_manifest(arm64[0])
+              x = parse_manifest(x64[0])
+              content = (
+                  f"version: {a['version']}\n"
+                  f"files:\n"
+                  f"  - url: {a['url']}\n"
+                  f"    sha512: {a['sha512']}\n"
+                  f"    size: {a['size']}\n"
+                  f"  - url: {x['url']}\n"
+                  f"    sha512: {x['sha512']}\n"
+                  f"    size: {x['size']}\n"
+                  f"path: {a['url']}\n"
+                  f"sha512: {a['sha512']}\n"
+                  f"releaseDate: {a['date']}\n"
+              )
+          elif arm64:
+              content = open(arm64[0]).read()
+          elif x64:
+              content = open(x64[0]).read()
+          else:
+              raise RuntimeError("No macOS manifests found")
+
+          with open('latest-mac.yml', 'w') as f:
+              f.write(content)
+          print(content)
+          PYEOF
+
+      - name: Create release and upload assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --publish always
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+
+          gh release create "$TAG" \
+            --repo ${{ github.repository }} \
+            --title "MAUDEMetrics $TAG" \
+            --notes "Release $TAG" \
+            2>/dev/null || echo "Release already exists, uploading assets..."
+
+          for f in \
+            artifacts/dist-macos-arm64/*.dmg \
+            artifacts/dist-macos-arm64/*.blockmap \
+            artifacts/dist-macos-x64/*.dmg \
+            artifacts/dist-macos-x64/*.blockmap \
+            artifacts/dist-windows/*.exe \
+            artifacts/dist-windows/*.blockmap; do
+            [ -f "$f" ] && gh release upload "$TAG" "$f" \
+              --repo ${{ github.repository }} \
+              --clobber
+          done
+
+          gh release upload "$TAG" latest-mac.yml \
+            --repo ${{ github.repository }} \
+            --clobber
+
+          cp artifacts/dist-windows/latest.yml ./latest.yml
+          gh release upload "$TAG" latest.yml \
+            --repo ${{ github.repository }} \
+            --clobber
