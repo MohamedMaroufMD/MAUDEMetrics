@@ -246,15 +246,17 @@ autoUpdater.on('checking-for-update', () => {
 
 autoUpdater.on('update-available', (info) => {
   if (process.platform === 'darwin') {
+    const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+    const dmgUrl = `https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest/download/MAUDEMetrics-${arch}.dmg`;
     dialog.showMessageBox({
       type: 'info',
       title: 'Update Available',
       message: `MAUDEMetrics ${info.version} is available.`,
-      detail: 'Click "Download" to open the releases page and install the latest version.',
+      detail: 'Click "Download" to download the installer for your Mac.',
       buttons: ['Download', 'Later']
     }).then((result) => {
       if (result.response === 0) {
-        shell.openExternal('https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest');
+        shell.openExternal(dmgUrl);
       }
     });
   }
