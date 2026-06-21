@@ -1,5 +1,8 @@
-const { app, BrowserWindow, dialog, Menu } = require('electron');
+const { app, BrowserWindow, dialog, Menu, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
+
+// On macOS, auto-install via ZIP is unreliable on unsigned apps — open release page instead
+autoUpdater.autoDownload = process.platform !== 'darwin';
 const path = require('path');
 const { spawn } = require('child_process');
 const getPort = require('get-port');
@@ -148,22 +151,30 @@ function createMenu() {
           label: 'Check for Updates...',
           click: () => {
             let handled = false;
-            
+
             const onNotAvailable = () => {
               if (handled) return; handled = true;
               dialog.showMessageBox({
                 type: 'info',
                 title: 'Up to Date',
                 message: 'MAUDEMetrics is currently up to date.',
-                detail: `You are running the latest version (${app.getVersion()}).`
+                detail: `You are running version ${app.getVersion()}.`
               });
             };
-            
+
+            const onAvailable = () => { handled = true; };
+
             autoUpdater.once('update-not-available', onNotAvailable);
-            
-            autoUpdater.checkForUpdatesAndNotify().catch(err => {
+            autoUpdater.once('update-available', onAvailable);
+
+            if (mainWindow) mainWindow.setTitle('MAUDEMetrics — Checking for updates…');
+            autoUpdater.checkForUpdates().catch(err => {
               if (handled) return; handled = true;
-              dialog.showErrorBox('Update Error', 'Could not fetch updates from GitHub. Check your internet connection.');
+              if (mainWindow) mainWindow.setTitle('MAUDEMetrics');
+              dialog.showErrorBox('Update Error', 'Could not reach GitHub. Check your internet connection.');
+            }).finally(() => {
+              if (!handled) return;
+              if (mainWindow) mainWindow.setTitle('MAUDEMetrics');
             });
           }
         }
@@ -192,13 +203,39 @@ app.whenReady().then(async () => {
   }
 });
 
-autoUpdater.on('update-available', () => console.log('Update available.'));
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  if (process.platform === 'darwin') {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Update Available',
+      message: `MAUDEMetrics ${info.version} is available.`,
+      detail: 'Click "Download" to open the releases page and install the latest version.',
+      buttons: ['Download', 'Later']
+    }).then((result) => {
+      if (result.response === 0) {
+        shell.openExternal('https://github.com/MohamedMaroufMD/MAUDEMetrics/releases/latest');
+      }
+    });
+  }
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  const percent = Math.round(progress.percent);
+  if (mainWindow) mainWindow.setTitle(`MAUDEMetrics — Downloading update ${percent}%`);
+});
+
 autoUpdater.on('update-downloaded', (info) => {
+  if (mainWindow) mainWindow.setTitle('MAUDEMetrics');
   dialog.showMessageBox({
     type: 'info',
-    title: 'Update Downloaded',
-    message: 'A new version of MAUDEMetrics has been downloaded. The application will restart to complete the installation.',
-    buttons: ['Restart Now']
+    title: 'Update Ready',
+    message: `MAUDEMetrics ${info.version} has been downloaded.`,
+    detail: 'The application will restart to install the update.',
+    buttons: ['Restart Now', 'Later']
   }).then((result) => {
     if (result.response === 0) {
       isUpdating = true;
