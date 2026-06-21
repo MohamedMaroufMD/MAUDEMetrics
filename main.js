@@ -229,10 +229,9 @@ app.whenReady().then(async () => {
   const backendUrl = `http://127.0.0.1:${backendPort}`;
   const isUp = await waitForBackend(backendUrl);
 
-  if (splashWindow) { splashWindow.destroy(); splashWindow = null; }
-
   if (isUp) {
     createWindow(backendUrl);
+    if (splashWindow) { splashWindow.destroy(); splashWindow = null; }
     autoUpdater.checkForUpdatesAndNotify();
   } else {
     dialog.showErrorBox("Startup Error", "The MAUDEMetrics backend engine failed to start.");
