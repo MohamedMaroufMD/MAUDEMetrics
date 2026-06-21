@@ -7,6 +7,7 @@ const getPort = require('get-port');
 let mainWindow;
 let pythonProcess;
 let backendPort;
+let isUpdating = false;
 
 async function startPythonProcess() {
   backendPort = await getPort();
@@ -200,12 +201,14 @@ autoUpdater.on('update-downloaded', (info) => {
     buttons: ['Restart Now']
   }).then((result) => {
     if (result.response === 0) {
-      autoUpdater.quitAndInstall();
+      isUpdating = true;
+      autoUpdater.quitAndInstall(false, true);
     }
   });
 });
 
 app.on('window-all-closed', async () => {
+  if (isUpdating) return;
   if (pythonProcess) {
     try {
       await fetch(`http://127.0.0.1:${backendPort}/quit`);
