@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const getPort = require('get-port');
 
 let mainWindow;
+let splashWindow;
 let pythonProcess;
 let backendPort;
 let isUpdating = false;
@@ -58,6 +59,40 @@ async function waitForBackend(url, maxRetries = 300) {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   return false;
+}
+
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 380,
+    height: 260,
+    frame: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+    icon: app.isPackaged
+      ? path.join(process.resourcesPath, '..', 'assets', 'icon.png')
+      : path.join(__dirname, 'static', 'favicon.png')
+  });
+
+  splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+height:100vh;background:#0d1b2a;color:#fff;
+font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+.name{font-size:26px;font-weight:700;color:#4da6ff;letter-spacing:.5px}
+.sub{font-size:12px;color:#6c8ebf;margin-top:4px;margin-bottom:28px}
+.spinner{width:30px;height:30px;border:3px solid rgba(77,166,255,.2);
+border-top-color:#4da6ff;border-radius:50%;animation:spin .8s linear infinite}
+.status{margin-top:14px;font-size:11px;color:#4a6080}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style></head><body>
+<div class="name">MAUDEMetrics</div>
+<div class="sub">FDA Adverse Event Analytics</div>
+<div class="spinner"></div>
+<div class="status">Starting up…</div>
+</body></html>`)}`);
 }
 
 function createWindow(url) {
@@ -188,11 +223,13 @@ function createMenu() {
 
 app.whenReady().then(async () => {
   createMenu();
+  createSplashWindow();
   await startPythonProcess();
-  
+
   const backendUrl = `http://127.0.0.1:${backendPort}`;
-  // One-file backend startup can be slower on first launch (especially Intel Macs).
   const isUp = await waitForBackend(backendUrl);
+
+  if (splashWindow) { splashWindow.destroy(); splashWindow = null; }
 
   if (isUp) {
     createWindow(backendUrl);
