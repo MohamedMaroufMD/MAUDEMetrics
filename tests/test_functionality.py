@@ -12,7 +12,7 @@ import shutil
 # Add the parent directory to the path to import app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import app, get_db_connection, init_db, sanitize_text
+from app import app, get_db_connection, init_db, sanitize_text, build_search_query
 
 class TestMAUDEMetricsFunctionality(unittest.TestCase):
     """Test cases for MAUDEMetrics core functionality."""
@@ -109,6 +109,32 @@ class TestMAUDEMetricsFunctionality(unittest.TestCase):
         
         # The important thing is that the application doesn't crash
         # and returns a proper HTTP response
+
+    def test_build_search_query_no_filters(self):
+        """No filters supplied should produce a wildcard query."""
+        q = build_search_query()
+        self.assertTrue(q.endswith('search=*'))
+
+    def test_build_search_query_end_date_only(self):
+        """An end-date-only (open start) range must still filter, not be dropped."""
+        q = build_search_query(brand_name='impella', end_date='2026-03-25')
+        self.assertIn('date_received:[00010101+TO+20260325]', q)
+        self.assertIn('device.brand_name:"impella"', q)
+
+    def test_build_search_query_start_date_only(self):
+        """A start-date-only (open end) range must still filter, not be dropped."""
+        q = build_search_query(brand_name='impella', start_date='2020-01-01')
+        self.assertIn('date_received:[20200101+TO+99991231]', q)
+
+    def test_build_search_query_both_dates(self):
+        """Both bounds supplied should behave as before."""
+        q = build_search_query(start_date='2023-01-01', end_date='2023-12-31')
+        self.assertIn('date_received:[20230101+TO+20231231]', q)
+
+    def test_build_search_query_no_dates(self):
+        """No date bounds at all should omit the date_received clause entirely."""
+        q = build_search_query(brand_name='impella')
+        self.assertNotIn('date_received', q)
 
 if __name__ == '__main__':
     unittest.main()

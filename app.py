@@ -1878,6 +1878,77 @@ def extract_all_fields(event, event_id):
     
     return result
 
+def build_search_query(product_code='', brand_name='', device_generic_name='',
+                        start_date='', end_date='', manufacturer=''):
+    """Build an openFDA device/event search query URL from form filters.
+
+    Supports one-sided (open) date ranges: a query with only an end_date
+    filters "up to end_date", and only a start_date filters "from
+    start_date onward", rather than silently dropping the date filter
+    entirely when just one bound is supplied (the previous behavior,
+    which caused queries intended to have an open start date to silently
+    return unfiltered, all-time results).
+    """
+    base_query = "https://api.fda.gov/device/event.json?search="
+    search_params = []
+    if start_date or end_date:
+        lower_bound = start_date.replace('-', '') if start_date else '00010101'
+        upper_bound = end_date.replace('-', '') if end_date else '99991231'
+        search_params.append(f"date_received:[{lower_bound}+TO+{upper_bound}]")
+    if product_code:
+        codes = [c.strip() for c in product_code.split(',') if c.strip()]
+        if codes:
+            code_query = ' OR '.join([f'device.device_report_product_code:{c}*' for c in codes])
+            search_params.append(f'({code_query})')
+    if brand_name:
+        names = [n.strip() for n in brand_name.split(',') if n.strip()]
+        if names:
+            # Use phrase search for brand names with spaces
+            name_query = ' OR '.join([f'device.brand_name:"{n}"' for n in names])
+            search_params.append(f'({name_query})')
+    if device_generic_name:
+        generic_names = [n.strip() for n in device_generic_name.split(',') if n.strip()]
+        if generic_names:
+            # Use phrase search with word order variations for more precise matching
+            generic_queries = []
+            for name in generic_names:
+                words = name.split()
+                if len(words) > 1:
+                    # Create variations for multi-word terms
+                    generic_queries.append(f'device.generic_name:"{name}"')
+                    # Create FDA naming convention variations (comma-separated)
+                    if len(words) == 2:
+                        # Two words: "word1 word2" -> "word2, word1"
+                        reversed_name = ", ".join(reversed(words))
+                        generic_queries.append(f'device.generic_name:"{reversed_name}"')
+                    elif len(words) == 3:
+                        # Three words: "word1 word2 word3" -> "word3, word1 word2" and "word2 word3, word1"
+                        generic_queries.append(f'device.generic_name:"{words[2]}, {words[0]} {words[1]}"')
+                        generic_queries.append(f'device.generic_name:"{words[1]} {words[2]}, {words[0]}"')
+                    elif len(words) > 3:
+                        # Four+ words: create common FDA variations
+                        # "word1 word2 word3 word4" -> "word4, word1 word2 word3"
+                        generic_queries.append(f'device.generic_name:"{words[-1]}, {" ".join(words[:-1])}"')
+                        # Also try "word3 word4, word1 word2"
+                        if len(words) >= 4:
+                            generic_queries.append(f'device.generic_name:"{words[-2]} {words[-1]}, {" ".join(words[:-2])}"')
+                else:
+                    # Single word - use phrase search
+                    generic_queries.append(f'device.generic_name:"{name}"')
+            generic_query = ' OR '.join(generic_queries)
+            search_params.append(f'({generic_query})')
+    if manufacturer:
+        manufacturers = [n.strip() for n in manufacturer.split(',') if n.strip()]
+        if manufacturers:
+            manufacturer_query = ' OR '.join([f'device.manufacturer_d_name:{n}*' for n in manufacturers])
+            search_params.append(f'({manufacturer_query})')
+    if search_params:
+        base_query += "+AND+".join(search_params)
+    else:
+        base_query += "*"  # Get all records if no filters
+    return base_query
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     with get_db_connection() as conn:
@@ -1892,65 +1963,12 @@ def index():
         max_records = request.form.get('max_records', '')
         manufacturer = request.form.get('manufacturer', '')
         api_key_input = request.form.get('api_key', '').strip()
-        # Remove manufacturer from search logic
-        
-        # Build the query
-        base_query = "https://api.fda.gov/device/event.json?search="
-        search_params = []
-        if start_date and end_date:
-            search_params.append(f"date_received:[{start_date}+TO+{end_date}]")
-        if product_code:
-            codes = [c.strip() for c in product_code.split(',') if c.strip()]
-            if codes:
-                code_query = ' OR '.join([f'device.device_report_product_code:{c}*' for c in codes])
-                search_params.append(f'({code_query})')
-        if brand_name:
-            names = [n.strip() for n in brand_name.split(',') if n.strip()]
-            if names:
-                # Use phrase search for brand names with spaces
-                name_query = ' OR '.join([f'device.brand_name:"{n}"' for n in names])
-                search_params.append(f'({name_query})')
-        if device_generic_name:
-            generic_names = [n.strip() for n in device_generic_name.split(',') if n.strip()]
-            if generic_names:
-                # Use phrase search with word order variations for more precise matching
-                generic_queries = []
-                for name in generic_names:
-                    words = name.split()
-                    if len(words) > 1:
-                        # Create variations for multi-word terms
-                        generic_queries.append(f'device.generic_name:"{name}"')
-                        # Create FDA naming convention variations (comma-separated)
-                        if len(words) == 2:
-                            # Two words: "word1 word2" -> "word2, word1"
-                            reversed_name = ", ".join(reversed(words))
-                            generic_queries.append(f'device.generic_name:"{reversed_name}"')
-                        elif len(words) == 3:
-                            # Three words: "word1 word2 word3" -> "word3, word1 word2" and "word2 word3, word1"
-                            generic_queries.append(f'device.generic_name:"{words[2]}, {words[0]} {words[1]}"')
-                            generic_queries.append(f'device.generic_name:"{words[1]} {words[2]}, {words[0]}"')
-                        elif len(words) > 3:
-                            # Four+ words: create common FDA variations
-                            # "word1 word2 word3 word4" -> "word4, word1 word2 word3"
-                            generic_queries.append(f'device.generic_name:"{words[-1]}, {" ".join(words[:-1])}"')
-                            # Also try "word3 word4, word1 word2"
-                            if len(words) >= 4:
-                                generic_queries.append(f'device.generic_name:"{words[-2]} {words[-1]}, {" ".join(words[:-2])}"')
-                    else:
-                        # Single word - use phrase search
-                        generic_queries.append(f'device.generic_name:"{name}"')
-                generic_query = ' OR '.join(generic_queries)
-                search_params.append(f'({generic_query})')
-        if manufacturer:
-            manufacturers = [n.strip() for n in manufacturer.split(',') if n.strip()]
-            if manufacturers:
-                manufacturer_query = ' OR '.join([f'device.manufacturer_d_name:{n}*' for n in manufacturers])
-                search_params.append(f'({manufacturer_query})')
-        if search_params:
-            base_query += "+AND+".join(search_params)
-        else:
-            base_query += "*"  # Get all records if no filters
-        
+
+        base_query = build_search_query(
+            product_code=product_code, brand_name=brand_name,
+            device_generic_name=device_generic_name,
+            start_date=start_date, end_date=end_date, manufacturer=manufacturer)
+
         max_records_int = None
         if max_records:
             try:
